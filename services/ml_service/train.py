@@ -62,8 +62,8 @@ def _download_dataset() -> list[tuple[str, str]]:
                     target.write_bytes(response.read())
             with target.open("r", encoding="utf-8") as handle:
                 for row in csv.reader(handle, delimiter="\t"):
-                    if len(row) >= 3 and row[0] in LABELS and row[2].strip():
-                        rows.append((row[0], row[2].strip()))
+                    if len(row) >= 3 and row[1] in LABELS and row[2].strip():
+                        rows.append((row[1], row[2].strip()))
         except Exception:
             continue
     return rows or FALLBACK_ROWS
