@@ -1,0 +1,13 @@
+{
+  "dataset": "LIAR: A New Benchmark Dataset for Fake News Detection",
+  "samples": 27,
+  "trainSamples": 20,
+  "validationSamples": 7,
+  "testSamples": 7,
+  "accuracy": 0.1429,
+  "precision": 0.1667,
+  "recall": 0.0833,
+  "f1": 0.1111,
+  "model": "TF-IDF + Logistic Regression",
+  "note": "The model is an additional signal. Current verification should rely on available evidence and sources, not this prediction as absolute truth."
+}

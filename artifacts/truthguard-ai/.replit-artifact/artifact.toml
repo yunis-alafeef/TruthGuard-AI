@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "TruthGuard AI"
+description = "A professional AI fact-checking chatbot that analyzes claims, searches for supporting or contradicting evidence, and combines source-backed reasoning with a trained machine-learning signal."
+version = "1.0.0"
+id = "artifacts/truthguard-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23198
+
+[services.development]
+run = "pnpm --filter @workspace/truthguard-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/truthguard-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/truthguard-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23198"
+BASE_PATH = "/"

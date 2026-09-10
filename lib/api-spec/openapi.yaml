@@ -1,0 +1,197 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: verification
+    description: AI-assisted claim verification
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /verify:
+    post:
+      operationId: verifyClaim
+      tags: [verification]
+      summary: Verify a claim
+      description: Extracts a factual claim, gathers public web evidence when available, and combines it with a trained ML signal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClaimInput"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationResult"
+        "400":
+          description: Invalid claim
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /history:
+    get:
+      operationId: listVerificationHistory
+      tags: [verification]
+      summary: List recent verification checks
+      responses:
+        "200":
+          description: Recent checks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VerificationSummary"
+  /model/metrics:
+    get:
+      operationId: getModelMetrics
+      tags: [verification]
+      summary: Get trained model evaluation metrics
+      responses:
+        "200":
+          description: Model metrics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelMetrics"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    ClaimInput:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 8
+          maxLength: 2000
+        includeWebSearch:
+          type: boolean
+          default: true
+      required:
+        - text
+    Evidence:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        snippet:
+          type: string
+        stance:
+          type: string
+          enum: [supports, contradicts, context]
+        sourceType:
+          type: string
+      required: [title, url, snippet, stance, sourceType]
+    MLSignal:
+      type: object
+      properties:
+        label:
+          type: string
+        confidence:
+          type: number
+        model:
+          type: string
+      required: [label, confidence, model]
+    VerificationResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        originalText:
+          type: string
+        extractedClaim:
+          type: string
+        verdict:
+          type: string
+          enum: [Supported, "Likely True", Unverified, Misleading, "False"]
+        confidence:
+          type: number
+        explanation:
+          type: string
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        mlSignal:
+          $ref: "#/components/schemas/MLSignal"
+        searchStatus:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, originalText, extractedClaim, verdict, confidence, explanation, evidence, mlSignal, searchStatus, createdAt]
+    VerificationSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        originalText:
+          type: string
+        verdict:
+          type: string
+          enum: [Supported, "Likely True", Unverified, Misleading, "False"]
+        confidence:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, originalText, verdict, confidence, createdAt]
+    ModelMetrics:
+      type: object
+      properties:
+        dataset:
+          type: string
+        samples:
+          type: integer
+        accuracy:
+          type: number
+        precision:
+          type: number
+        recall:
+          type: number
+        f1:
+          type: number
+        model:
+          type: string
+        note:
+          type: string
+      required: [dataset, samples, accuracy, precision, recall, f1, model, note]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
