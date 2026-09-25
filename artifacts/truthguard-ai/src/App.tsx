@@ -1,3 +1,4 @@
+import pinoHttp from 'pino-http';
 import { useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import {
   getListVerificationHistoryQueryKey,
