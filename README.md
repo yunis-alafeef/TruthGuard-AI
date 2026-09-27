@@ -1,47 +1,47 @@
 # TruthGuard AI
 
-TruthGuard AI is a small, source-aware fact-checking chatbot. Paste a news claim, headline, message, or piece of information and it extracts the main factual claim, searches the public web for relevant context, combines that evidence with a trained text-classification signal, and returns a readable verdict:
+TruthGuard AI هو روبوت صغير للتحقق من الأخبار والمعطيات بناءً على المصادر والأدلة. قم بلصق ادعاء إخباري أو عنوان أو رسالة أو معلومة، وسيستخرج الفرضية الأساسية، ثم يبحث في الويب عن السياق المناسب، ويقارن الأدلة مع إشارة نموذج تعلم آلي مدرب، ويعرض نتيجة واضحة ومفهومة:
 
-- Supported
-- Likely True
-- Unverified
-- Misleading
-- False
+- مدعوم
+- محتمل الصدق
+- غير مُتحقّق
+- مضلّل
+- خاطئ
 
-The interface uses a restrained white-and-gold identity to make verification feel calm, trustworthy, and easy to understand.
+الواجهة تستخدم هوية هادئة باللون الأبيض والذهبي لتمنح تجربة تحقق مريحة وموثوقة وسهلة القراءة.
 
-## The problem
+## المشكلة
 
-False or misleading information moves faster than careful verification. Most people need a quick starting point, but a single model score is not enough to establish truth. TruthGuard AI is designed to make the reasoning visible: users see the extracted claim, the sources returned by the search step, the evidence stance, and the model signal separately.
+المعلومات الخاطئة أو المضللة تنتشر أسرع من التحقق الدقيق. يحتاج معظم الناس إلى نقطة بداية سريعة، لكنّ نتيجة نموذج واحد لا تكفي لتحديد الحقيقة. تم تصميم TruthGuard AI ليجعل المنطق واضحاً: يرى المستخدم الادعاء المستخرج، والمصادر التي أرجعها البحث، وموقف الأدلة، وإشارة النموذج بشكل منفصل.
 
-## How the AI agent works
+## كيف يعمل الوكيل الذكي
 
-1. **Understand** — normalizes the submitted message and extracts its central factual claim.
-2. **Investigate** — optionally queries DuckDuckGo's public HTML results for current web evidence.
-3. **Classify** — calls the Python FastAPI service at `/predict`.
-4. **Combine** — compares supporting and contradicting search signals with the ML signal.
-5. **Explain** — returns a verdict, confidence, explanation, source links, and the model signal.
-6. **Remember** — stores the check in a local SQLite database so it appears in History.
+1. **الفهم** — يطبيع الرسالة المدخلة ويستخرج الفرضية الفعلية الأساسية.
+2. **التحقيق** — يبحث بشكل اختياري في نتائج DuckDuckGo العامة للحصول على أدلة Web حديثة.
+3. **التصنيف** — يستدعي خدمة Python FastAPI عند المسار `/predict`.
+4. **الجمع** — يقارن إشارات الدعم والتضارب من البحث مع إشارة النموذج.
+5. **الشرح** — يعيد النتيجة، مستوى الثقة، التفسير، روابط المصادر، وإشارة النموذج.
+6. **التذكر** — يخزن التحقق في قاعدة SQLite محلية بحيث يظهر في قسم السجل.
 
-Web evidence takes priority. The ML model is an **additional signal**, not an absolute truth source. Current verification should rely on available evidence and sources, and important claims still need human review.
+تأخذ أدلة الويب الأولوية. النموذج الخطي هو **إشارة إضافية** وليس مصدر حقيقة مطلق. يعتمد التحقق الحالي على الأدلة والمصادر المتاحة، ما زال من الضروري مراجعة المطالب المهمة من قبل الإنسان.
 
-## Dataset and model
+## مجموعة البيانات والنموذج
 
-The training service uses the public [LIAR dataset](https://www.cs.ucsb.edu/~william/data/liar_dataset.zip), a benchmark for fake-news and fact-checking classification originally introduced by William Yang Wang in *Liar, Liar Pants on Fire: A New Benchmark Dataset for Fake News Detection*.
+تستخدم خدمة التدريب مجموعة البيانات العامة [LIAR dataset](https://www.cs.ucsb.edu/~william/data/liar_dataset.zip)، وهي معيار مشهور لتصنيف الأخبار المزيفة والتحقق من الحقائق، أُدخلت أول مرة من قبل William Yang Wang في كتاب *Liar, Liar Pants on Fire: A New Benchmark Dataset for Fake News Detection*.
 
 `services/ml_service/train.py`:
 
-- downloads the public LIAR train, validation, and test files when available;
-- keeps the supplied validation split separate;
-- uses an 80/20 stratified train/test split on the combined public rows when the dataset is available;
-- trains a TF-IDF vectorizer with unigrams and bigrams;
-- trains a balanced Logistic Regression classifier;
-- writes `model.joblib` and `metrics.json`;
-- calculates Accuracy, macro Precision, macro Recall, and macro F1.
+- ينزل ملفات LIAR التدريبية والتحققية والاختبارية عند توفرها؛
+- يحافظ على تقسيم التحقق المقدم بشكل منفصل؛
+- يستخدم تقسيم 80/20 مهمَّاً على الصفوف العامة عند توفر البيانات؛
+- يدرب vectorizer من نوع TF-IDF مع uni-grams و bi-grams؛
+- يدرب مصنّف Logistic Regression متوازن؛
+- يكتب `model.joblib` و `metrics.json`؛
+- يحسب الدقة، Precision macro، Recall macro، و F1 macro.
 
-The repository includes the generated model artifacts after the first training run. If the public download is unavailable, the script uses a tiny transparent fallback corpus so the service remains runnable; the README UI makes this distinction visible through the metrics endpoint.
+يتضمن المستودع ملفات النماذج الناتجة بعد أول تدريب. إذا تعذر تنزيل البيانات العامة، يستخدم السكربت مجموعة بيانات احتياطية صغيرة وشفافة بحيث تبقى الخدمة قابلة للتشغيل؛ وتُظهر واجهة README هذا التمييز عبر نقطة المقاييس.
 
-## Architecture
+## البنية المعمارية
 
 ```text
 React + TypeScript + Vite
@@ -49,24 +49,24 @@ React + TypeScript + Vite
         | /api/verify, /api/history, /api/model/metrics
         v
 Node.js API server
-  - claim normalization
-  - web evidence search
-  - verdict explanation
-  - SQLite history
+  - تطبيع الادعاء
+  - بحث أدلة من الويب
+  - شرح النتيجة
+  - سجل SQLite
         |
         | POST /predict
         v
 Python FastAPI ML service
   - TF-IDF
   - Logistic Regression
-  - saved joblib model
+  - نموذج joblib محفوظ
 ```
 
-The Node API starts the local FastAPI service automatically for the development workflow. The Python service can also be started independently when needed.
+يبدأ خادم API المحلي خدمة FastAPI تلقائياً أثناء التطوير. ويمكن أيضاً تشغيل خدمة Python بشكل مستقل عند الحاجة.
 
-## Run locally
+## التشغيل محلياً
 
-Requirements: Node.js 24, pnpm, and Python 3.13.
+المتطلبات: Node.js 24، pnpm، و Python 3.13.
 
 ```bash
 pnpm install
@@ -74,21 +74,21 @@ pnpm --filter @workspace/api-spec run codegen
 python3 -m services.ml_service.train
 ```
 
-Start the application services:
+ابدأ خدمات التطبيق:
 
 ```bash
 pnpm --filter @workspace/api-server run dev
 pnpm --filter @workspace/truthguard-ai run dev
 ```
 
-The API is mounted at `/api`. The frontend is served at the root app path in the Replit preview. In a normal local shell, the API can be checked with:
+يتم رفع واجهة API على `/api`. ويتم عرض الواجهة الأمامية في مسار التطبيق الرئيسي في معاينة Replit. وفي غلاف محلي عادي يمكن فحص الـ API عبر:
 
 ```bash
 curl http://localhost:5000/api/healthz
 curl http://localhost:5000/api/model/metrics
 ```
 
-Run checks:
+قم بتشغيل الفحوصات:
 
 ```bash
 pnpm run typecheck
@@ -96,29 +96,29 @@ pnpm --filter @workspace/truthguard-ai run build
 python3 -m py_compile services/ml_service/app.py services/ml_service/train.py
 ```
 
-## Technologies
+## التقنيات
 
-- React, TypeScript, Vite, Tailwind CSS, Wouter, TanStack Query
-- Node.js API server with Express 5, typed OpenAPI contract, and generated client hooks
-- Python, FastAPI, scikit-learn, joblib
-- SQLite via Node's built-in `node:sqlite`
-- DuckDuckGo public HTML search for optional current evidence
+- React، TypeScript، Vite، Tailwind CSS، Wouter، TanStack Query
+- خادم Node.js API مع Express 5، عقد OpenAPI مكتوبة، وعملاء مولدين
+- Python، FastAPI، scikit-learn، joblib
+- SQLite عبر `node:sqlite` المدمج في Node
+- بحث DuckDuckGo العام لالتقاط أدلة حديثة اختياريًا
 
-The workspace preview uses the existing React/Vite artifact and modular Node API service so the MVP can run without a separate deployment platform or user-provided API keys.
+تستخدم معاينة مساحة العمل نفس مكون React/Vite والـ Node API المعياري بحيث يمكن تشغيل MVP دون منصة نشر منفصلة أو مفاتيح API من المستخدم.
 
-## Limitations
+## القيود
 
-- Search snippets are not the same as source articles; users should open the links and read the underlying material.
-- Search availability, indexing, rate limits, and page changes can affect a result.
-- The source stance heuristic is intentionally small and should not be treated as a perfect fact-checker.
-- The LIAR dataset contains short political claims and does not represent every topic, language, or writing style.
-- A low or high model confidence does not prove or disprove a claim.
-- No authentication is included; the SQLite history is local to the running service.
-- Arabic text can be entered and displayed, but the included ML model was trained primarily on the English LIAR corpus.
+- لا تمثل مقتطفات البحث نفس المقالات الأصلية؛ ينبغي للمستخدم فتح الروابط وقراءة المواد الأساسية.
+- يمكن أن تؤثر توفر البحث والفهرسة والحدود السريعة وتغيّر الصفحات على النتيجة.
+- خوارزمية تقدير موقف المصدر صغيرة بطبيعتها ولا ينبغي التعامل معها كمدقق حقيقة مثالي.
+- تحتوي مجموعة LIAR على بيانات سياسية قصيرة ولا تمثل كل المواضيع أو اللغات أو أساليب الكتابة.
+- لا تثبت مستويات الثقة المنخفضة أو المرتفعة صحة أو عدم صحة ادعاء معين.
+- لا توجد مصادقة، وسجل SQLite محلي فقط للخدمة الحالية.
+- يمكن إدخال النص العربي وعرضه، لكن النموذج المرفق تم تدريبه في الغالب على LIAR باللغة الإنجليزية.
 
-## Branding
+## الهوية التجارية
 
-The product displays:
+يعرض المنتج:
 
 **TruthGuard AI**  
 **لا تصدق فقط… تحقق.**  
