@@ -20,20 +20,26 @@ import {
   ChevronRight,
   CircleAlert,
   Clock3,
+  Copy,
+  Download,
   ExternalLink,
   FileSearch,
+  FileText,
   History,
   Info,
   Loader2,
   Menu,
   Network,
   Quote,
+  Search,
+  Share2,
   ShieldCheck,
   Sparkles,
   X,
   XCircle,
 } from "lucide-react";
 import { Link, Route, Switch, useLocation } from "wouter";
+import { exportVerificationAsJson, exportVerificationAsMarkdown } from "./lib/export-report";
 
 const exampleClaims = [
   "تم اختراع شبكة الإنترنت العالمية بواسطة تيم بيرنرز لي.",
@@ -151,8 +157,64 @@ function EvidenceCard({ item }: { item: Evidence }) {
 
 function ResultPanel({ result }: { result: VerificationResult }) {
   const [showDetails, setShowDetails] = useState(true);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [stanceFilter, setStanceFilter] = useState<"all" | "supports" | "contradicts" | "context">("all");
   const percent = Math.round(result.confidence * 100);
   const modelPercent = Math.round(result.mlSignal.confidence * 100);
+
+  const supportCount = result.evidence.filter((e) => e.stance === "supports").length;
+  const contradictCount = result.evidence.filter((e) => e.stance === "contradicts").length;
+  const contextCount = result.evidence.filter((e) => e.stance === "context").length;
+
+  const filteredEvidence = result.evidence.filter((item) => {
+    if (stanceFilter === "all") return true;
+    return item.stance === stanceFilter;
+  });
+
+  const handleCopySummary = async () => {
+    const summaryText = `🛡️ تقرير TruthGuard للتحقق:
+الادعاء: "${result.extractedClaim}"
+الحكم: ${verdictCopy[result.verdict]?.label ?? result.verdict} (${percent}% نسبة الثقة)
+التوضيح: ${result.explanation}
+عدد المصادر: ${result.evidence.length}
+تم التحقق عبر TruthGuard AI`;
+
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(summaryText);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = summaryText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      // fallback
+    }
+  };
+
+  const handleShare = async () => {
+    const summaryText = `🛡️ نتيجة التحقق من TruthGuard: "${result.extractedClaim}" - الحكم: ${verdictCopy[result.verdict]?.label ?? result.verdict} (${percent}%)`;
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await navigator.share({
+          title: "TruthGuard AI - تقرير التحقق",
+          text: summaryText,
+          url: window.location.href,
+        });
+      } catch {
+        // user cancelled
+      }
+    } else {
+      await handleCopySummary();
+    }
+  };
+
   return (
     <section className="result-panel reveal-up">
       <div className="result-heading">
@@ -160,7 +222,47 @@ function ResultPanel({ result }: { result: VerificationResult }) {
           <SectionEyebrow>نتيجة التحقق</SectionEyebrow>
           <h2>إليك ما يقوله الدليل.</h2>
         </div>
-        <VerdictBadge verdict={result.verdict} />
+        <div className="result-actions">
+          <VerdictBadge verdict={result.verdict} />
+          <button
+            type="button"
+            className={`action-pill-button ${copied ? "is-copied" : ""}`}
+            onClick={handleCopySummary}
+            title="نسخ ملخص التقرير إلى الحافظة"
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span>{copied ? "تم النسخ!" : "نسخ النتيجة"}</span>
+          </button>
+          {typeof navigator !== "undefined" && "share" in navigator && (
+            <button
+              type="button"
+              className="action-pill-button"
+              onClick={handleShare}
+              title="مشاركة النتيجة"
+            >
+              <Share2 size={14} />
+              <span>مشاركة</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="action-pill-button"
+            onClick={() => exportVerificationAsMarkdown(result, verdictCopy[result.verdict]?.label ?? result.verdict)}
+            title="تنزيل التقرير بصيغة Markdown (.md)"
+          >
+            <FileText size={14} />
+            <span>تنزيل MD</span>
+          </button>
+          <button
+            type="button"
+            className="action-pill-button"
+            onClick={() => exportVerificationAsJson(result)}
+            title="تصدير البيانات بصيغة JSON"
+          >
+            <Download size={14} />
+            <span>JSON</span>
+          </button>
+        </div>
       </div>
       <div className="result-confidence">
         <div className="confidence-ring" style={{ "--confidence": `${percent * 3.6}deg` } as CSSProperties}>
@@ -177,13 +279,111 @@ function ResultPanel({ result }: { result: VerificationResult }) {
         <div className="meta-stat"><span>إشارة النموذج</span><strong>{result.mlSignal.label} <em>{modelPercent}%</em></strong></div>
         <div className="meta-stat"><span>تمت المراجعة</span><strong>{new Date(result.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong></div>
       </div>
+
+      <div className="transparency-toggle-row">
+        <button
+          type="button"
+          className="text-button"
+          onClick={() => setShowBreakdown((v) => !v)}
+        >
+          <Info size={14} />
+          <span>{showBreakdown ? "إخفاء تفاصيل احتساب الثقة والمنهجية" : "كيف تم احتساب هذه النتيجة ونسبة الثقة؟"}</span>
+          <ChevronRight size={14} className={showBreakdown ? "rotate-90" : ""} />
+        </button>
+      </div>
+
+      {showBreakdown && (
+        <div className="calculation-breakdown-card reveal-up">
+          <h4>تفصيل أوزان القرار والشفافية</h4>
+          <p className="breakdown-intro">
+            يعتمد TruthGuard على منهجية مركّبة تفصل بين الأدلة الحية ونموذج معالجة اللغة الطبيعية:
+          </p>
+          <div className="breakdown-grid">
+            <div className="breakdown-item">
+              <div className="breakdown-item-header">
+                <strong>1. أدلة الويب الحية (الوزن الأساسي)</strong>
+                <span className="breakdown-tag">{result.evidence.length} مصادر</span>
+              </div>
+              <p>
+                {supportCount > 0 && `رُصد ${supportCount} مصادر تدعم الادعاء. `}
+                {contradictCount > 0 && `رُصد ${contradictCount} مصادر تنفي أو تُكذّب الادعاء. `}
+                {contextCount > 0 && `رُصد ${contextCount} مصادر توفر سياقاً توضيحياً. `}
+                {result.evidence.length === 0 && "لم ترجع محركات البحث مصادر حاسمة كافية، مما خفض مؤشر اليقين تلقائياً."}
+              </p>
+            </div>
+            <div className="breakdown-item">
+              <div className="breakdown-item-header">
+                <strong>2. إشارة نموذج التعلم الآلي (LIAR Classifier)</strong>
+                <span className="breakdown-tag">{result.mlSignal.label} ({modelPercent}%)</span>
+              </div>
+              <p>
+                يحلل النموذج البنية النصية والصيغة التعبيرية بناءً على آلاف الادعاءات السابقة في معيار LIAR. الإشارة استرشادية ولا تحكم بمفردها.
+              </p>
+            </div>
+          </div>
+          <div className="formula-summary">
+            <strong>قاعدة الحكم المطبقة: </strong>
+            <span>
+              {result.verdict === "Supported"
+                ? "دعم متطابق من عدة مصادر موثوقة مع غياب مصادر التناقض."
+                : result.verdict === "False"
+                ? "تناقض صريح وتكذيب متكرر عبر أكثر من مصدر موثق."
+                : result.verdict === "Misleading"
+                ? "الأدلة المتناقضة تتجاوز الأدلة المؤيدة أو وجود اجتزاء للسياق."
+                : result.verdict === "Likely True"
+                ? "مؤشرات ترجح صحة الادعاء مع الحاجة لمزيد من التثبت المباشر."
+                : "عدم كفاية المصادر المتاحة للفصل القطعي."}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="result-section-head">
         <div><span className="label-caps">الأدلة المستخدمة</span><span className="evidence-count">{result.evidence.length} مصدر</span></div>
         <button className="text-button" onClick={() => setShowDetails((value) => !value)}>{showDetails ? "إخفاء" : "إظهار"} التفاصيل <ChevronRight size={15} className={showDetails ? "rotate-90" : ""} /></button>
       </div>
+      {showDetails && result.evidence.length > 0 && (
+        <div className="stance-filter-bar">
+          <button
+            type="button"
+            className={`stance-tab ${stanceFilter === "all" ? "is-active" : ""}`}
+            onClick={() => setStanceFilter("all")}
+          >
+            الكل ({result.evidence.length})
+          </button>
+          <button
+            type="button"
+            className={`stance-tab stance-tab-supports ${stanceFilter === "supports" ? "is-active" : ""}`}
+            onClick={() => setStanceFilter("supports")}
+          >
+            <span className="stance-dot stance-supports" />
+            يدعم ({supportCount})
+          </button>
+          <button
+            type="button"
+            className={`stance-tab stance-tab-contradicts ${stanceFilter === "contradicts" ? "is-active" : ""}`}
+            onClick={() => setStanceFilter("contradicts")}
+          >
+            <span className="stance-dot stance-contradicts" />
+            يتناقض ({contradictCount})
+          </button>
+          <button
+            type="button"
+            className={`stance-tab stance-tab-context ${stanceFilter === "context" ? "is-active" : ""}`}
+            onClick={() => setStanceFilter("context")}
+          >
+            <span className="stance-dot stance-context" />
+            سياق ({contextCount})
+          </button>
+        </div>
+      )}
       {showDetails && (
         result.evidence.length ? (
-          <div className="evidence-list">{result.evidence.map((item, index) => <EvidenceCard item={item} key={`${item.url}-${index}`} />)}</div>
+          filteredEvidence.length ? (
+            <div className="evidence-list">{filteredEvidence.map((item, index) => <EvidenceCard item={item} key={`${item.url}-${index}`} />)}</div>
+          ) : (
+            <div className="empty-evidence"><FileSearch size={20} /><div><strong>لا توجد مصادر بهذا التصنيف</strong><p>اختر تبويب "الكل" لعرض كافة الأدلة المتاحة.</p></div></div>
+          )
         ) : (
           <div className="empty-evidence"><FileSearch size={20} /><div><strong>لم يتم إرجاع مصادر ويب</strong><p>حاول إدخال ادعاء أكثر دقة أو تحقق لاحقاً. تظهر إشارة النموذج بشكل منفصل ولا تُعد بديلاً عن الأدلة.</p></div></div>
         )
@@ -213,6 +413,18 @@ function VerifyPage() {
     mutation.mutate({ data: { text: claim.trim(), includeWebSearch } });
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      event.preventDefault();
+      if (claim.trim().length >= 8 && !mutation.isPending) {
+        mutation.mutate({ data: { text: claim.trim(), includeWebSearch } });
+      }
+    }
+  };
+
+  const isMinLength = claim.trim().length >= 8;
+  const charsRemaining = 8 - claim.trim().length;
+
   return (
     <PageFrame>
       <div className="page-shell">
@@ -234,14 +446,57 @@ function VerifyPage() {
             <div className="card-heading">
               <div className="heading-icon"><Quote size={19} /></div>
               <div><h2>ماذا تريد التحقق منه؟</h2><p>ألصق ادعاء أو عنواناً أو رسالة. سنفككها لك.</p></div>
+              {claim.length > 0 && (
+                <button
+                  type="button"
+                  className="quick-clear-btn"
+                  onClick={() => setClaim("")}
+                  title="مسح حقل الإدخال"
+                >
+                  <X size={13} />
+                  <span>مسح</span>
+                </button>
+              )}
             </div>
             <form onSubmit={submit}>
-              <textarea value={claim} onChange={(event) => setClaim(event.target.value)} placeholder="مثال: “تدور الأرض حول الشمس.”" maxLength={2000} aria-label="ادعاء للتدقيق" />
+              <textarea
+                value={claim}
+                onChange={(event) => setClaim(event.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="مثال: “تدور الأرض حول الشمس.”"
+                maxLength={2000}
+                aria-label="ادعاء للتدقيق"
+              />
               <div className="form-footer">
-                <span className="char-count">{claim.length}/2000</span>
-                <label className="toggle-row"><input type="checkbox" checked={includeWebSearch} onChange={(event) => setIncludeWebSearch(event.target.checked)} /><span className="toggle-track" /><span>البحث عن مصادر حالية</span></label>
-                <button className="primary-button" type="submit" disabled={claim.trim().length < 8 || mutation.isPending}>
-                  {mutation.isPending ? <><Loader2 size={17} className="spin" /> جاري التحقق…</> : <>تحقق من الادعاء <ArrowUpRight size={17} /></>}
+                <div className="input-hint-row">
+                  <span className="char-count">{claim.length}/2000</span>
+                  {claim.length > 0 && !isMinLength && (
+                    <span className="min-char-warning">متبقي {charsRemaining} أحرف على الأقل</span>
+                  )}
+                  {isMinLength && (
+                    <span className="ready-indicator"><span className="status-dot" /> جاهز للتحقق</span>
+                  )}
+                </div>
+                <label className="toggle-row">
+                  <input
+                    type="checkbox"
+                    checked={includeWebSearch}
+                    onChange={(event) => setIncludeWebSearch(event.target.checked)}
+                  />
+                  <span className="toggle-track" />
+                  <span>البحث عن مصادر حالية</span>
+                </label>
+                <button
+                  className="primary-button"
+                  type="submit"
+                  disabled={!isMinLength || mutation.isPending}
+                  title="اضغط للتحقق أو استخدم الاختصار Ctrl + Enter"
+                >
+                  {mutation.isPending ? (
+                    <><Loader2 size={17} className="spin" /> جاري التحقق…</>
+                  ) : (
+                    <>تحقق من الادعاء <small className="kbd-hint">Ctrl+↵</small> <ArrowUpRight size={17} /></>
+                  )}
                 </button>
               </div>
             </form>
@@ -265,12 +520,110 @@ function VerifyPage() {
 function HistoryPage() {
   const { data, isLoading, isError } = useListVerificationHistory();
   const history = data ?? [];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVerdict, setSelectedVerdict] = useState<string>("all");
+
+  const verdictCategories = [
+    { key: "all", label: "الكل" },
+    { key: "Supported", label: "مدعوم" },
+    { key: "Likely True", label: "محتمل الصدق" },
+    { key: "Unverified", label: "غير مُتحقَّق" },
+    { key: "Misleading", label: "مضلل" },
+    { key: "False", label: "خاطئ" },
+  ];
+
+  const filteredHistory = history.filter((item) => {
+    const matchesSearch = item.originalText.toLowerCase().includes(searchQuery.toLowerCase().trim());
+    const matchesVerdict = selectedVerdict === "all" || item.verdict === selectedVerdict;
+    return matchesSearch && matchesVerdict;
+  });
+
   return (
     <PageFrame>
       <div className="page-shell interior-page">
         <SectionEyebrow>سجل التحقق</SectionEyebrow>
-        <div className="interior-heading"><div><h1>التحقيقات الأخيرة.</h1><p>سجل محلي خاص بالادعاءات التي راجعتها في هذه الجلسة.</p></div><Link href="/" className="secondary-button">تحقق جديد <ArrowUpRight size={16} /></Link></div>
-        {isLoading ? <LoadingState label="جارٍ تحميل السجل…" /> : isError ? <ErrorState /> : history.length ? <div className="history-list">{history.map((item) => <HistoryRow item={item} key={item.id} />)}</div> : <div className="large-empty"><History size={30} /><h2>لا توجد تحقُّقات بعد</h2><p>عند تحققك لأول ادعاء سيظهر هنا.</p><Link href="/" className="primary-button">تحقق من ادعاء <ArrowUpRight size={16} /></Link></div>}
+        <div className="interior-heading">
+          <div>
+            <h1>التحقيقات الأخيرة.</h1>
+            <p>سجل محلي خاص بالادعاءات التي راجعتها في هذه الجلسة.</p>
+          </div>
+          <Link href="/" className="secondary-button">تحقق جديد <ArrowUpRight size={16} /></Link>
+        </div>
+
+        {isLoading ? (
+          <LoadingState label="جارٍ تحميل السجل…" />
+        ) : isError ? (
+          <ErrorState />
+        ) : history.length ? (
+          <div className="history-wrapper">
+            <div className="history-toolbar">
+              <div className="history-search-bar">
+                <Search size={15} />
+                <input
+                  type="text"
+                  placeholder="ابحث في نصوص الادعاءات السابقة…"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="بحث في السجل"
+                />
+                {searchQuery && (
+                  <button type="button" onClick={() => setSearchQuery("")} title="مسح البحث">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <div className="history-filter-tabs">
+                {verdictCategories.map((cat) => {
+                  const count = cat.key === "all"
+                    ? history.length
+                    : history.filter((h) => h.verdict === cat.key).length;
+                  if (count === 0 && cat.key !== "all") return null;
+                  return (
+                    <button
+                      key={cat.key}
+                      type="button"
+                      className={`filter-tab ${selectedVerdict === cat.key ? "is-active" : ""}`}
+                      onClick={() => setSelectedVerdict(cat.key)}
+                    >
+                      <span>{cat.label}</span>
+                      <small>({count})</small>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {filteredHistory.length ? (
+              <div className="history-list">
+                {filteredHistory.map((item) => (
+                  <HistoryRow item={item} key={item.id} />
+                ))}
+              </div>
+            ) : (
+              <div className="empty-search-state">
+                <FileSearch size={24} />
+                <p>لا توجد نتائج مطابقة لبحثك.</p>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setSelectedVerdict("all");
+                  }}
+                >
+                  إعادة ضبط المرشحات
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="large-empty">
+            <History size={30} />
+            <h2>لا توجد تحقُّقات بعد</h2>
+            <p>عند تحققك لأول ادعاء سيظهر هنا.</p>
+            <Link href="/" className="primary-button">تحقق من ادعاء <ArrowUpRight size={16} /></Link>
+          </div>
+        )}
       </div>
     </PageFrame>
   );

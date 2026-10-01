@@ -2,6 +2,8 @@ import { Router, type IRouter } from "express";
 import { VerifyClaimBody } from "@workspace/api-zod";
 import { logger } from "../lib/logger";
 import { listVerifications, saveVerification } from "../lib/store";
+import { buildSearchQuery, sanitizeClaimInput } from "../lib/text-normalizer";
+import { claimCache } from "../lib/cache";
 
 type Evidence = {
   title: string;
@@ -83,11 +85,7 @@ function extractRssEvidence(xml: string): Evidence[] {
 
 async function searchWeb(claim: string): Promise<{ evidence: Evidence[]; status: string }> {
   try {
-    const searchTerms = claim
-      .replace(/\b(the|a|an|is|was|were|that|this|and|or|of|to|in|on|for|by)\b/gi, " ")
-      .replace(/[“”"'.!?]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    const searchTerms = buildSearchQuery(claim);
     const url = `https://www.bing.com/search?format=rss&q=${encodeURIComponent(searchTerms || claim)}`;
     const response = await fetch(url, {
       headers: { "user-agent": "TruthGuardAI/1.0 (+fact-checking prototype)" },
@@ -128,7 +126,7 @@ async function getMlSignal(text: string): Promise<MlSignal> {
 }
 
 function extractClaim(text: string): string {
-  const normalized = text.replace(/\s+/g, " ").trim();
+  const normalized = sanitizeClaimInput(text);
   return normalized.length > 260 ? `${normalized.slice(0, 257)}...` : normalized;
 }
 
@@ -189,6 +187,15 @@ router.post("/verify", async (req, res) => {
   }
   const input = parsed.data;
   const extractedClaim = extractClaim(input.text);
+  const cacheKey = `${extractedClaim.toLowerCase()}::search=${input.includeWebSearch !== false}`;
+
+  const cached = claimCache.get(cacheKey) as Record<string, unknown> | undefined;
+  if (cached) {
+    res.setHeader("X-Cache", "HIT");
+    res.json(cached);
+    return;
+  }
+
   const [search, mlSignal] = await Promise.all([
     input.includeWebSearch === false
       ? Promise.resolve({ evidence: [] as Evidence[], status: "Web search skipped" })
@@ -208,7 +215,8 @@ router.post("/verify", async (req, res) => {
     searchStatus: search.status,
     createdAt,
   });
-  res.json({
+
+  const responseData = {
     id,
     originalText: input.text,
     extractedClaim,
@@ -219,7 +227,11 @@ router.post("/verify", async (req, res) => {
     mlSignal,
     searchStatus: search.status,
     createdAt,
-  });
+  };
+
+  claimCache.set(cacheKey, responseData);
+  res.setHeader("X-Cache", "MISS");
+  res.json(responseData);
 });
 
 router.get("/history", (_req, res) => {
