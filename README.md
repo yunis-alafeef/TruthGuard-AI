@@ -1,159 +1,68 @@
-# TruthGuard AI (حارس الحقيقة)
+# TruthGuard AI (حارس الحقيقة) 🛡️
 
-> **لا تصدق فقط… تحقق.**  
-> **إعداد وعمل المهندس يونس العفيف (Eng. Yunis Al-Afeef)**
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
+[![Fact Check Engine](https://img.shields.io/badge/TruthGuard-v2.1-emerald.svg)](https://github.com/yunis-alafeef/TruthGuard-AI)
+[![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-black.svg)](lib/openapi-spec.ts)
 
-TruthGuard AI هو نظام ذكي متقدم للتحقق من الادعاءات، الأخبار، والبيانات المتداولة عبر الإنترنت ومواقع التواصل الاجتماعي. يقوم بتحليل الادعاء باللغة العربية والإنجليزية، استخراج الفرضية الأساسية، فحص وتصفية أدلة الويب الحية، ومقارنتها بنموذج تعلم آلي إحصائي (مدرب على معيار LIAR الدولي)، لتقديم تقييم موضوعي شفاف وسريع.
-
----
-
-## 🚀 أبرز المميزات والإضافات الجديدة (New Features)
-
-1. **⚡ طبقة تخزين مؤقت فائقة السرعة (LRU TTL Cache):**
-   - تخزين مؤقت للادعاءات المفحوصة في الذاكرة مع انتهاء صلاحية زمني (TTL 15 دقيقة) وإرجاع ترويسة `X-Cache: HIT / MISS`.
-   - خفض زمن الاستجابة إلى أجزاء من الثانية للاستفسارات المتكررة وتقليل الضغط على محركات البحث.
-
-2. **🌐 معالجة وتطبيع متقدم للنصوص العربية (Arabic Text Normalization):**
-   - إزالة التشكيل والزوائد والتطويل (الكشيدة).
-   - توحيد همزات الألف (`أ`, `إ`, `آ`, `ٱ` -> `ا`) والياء والتاء المربوطة.
-   - تجريد العبارات التهويلية الشائعة تلقائياً (مثل "عاجل:", "تحذير خطير:", "هل تعلم أن...") للوصول للادعاء الجوهري وتحسين جودة البحث.
-
-3. **📋 نسخ ومشاركة فورية للتقارير (Copy & Share API):**
-   - نسخ ملخص التقرير المنسق بنقرة زر مع إشعار تفاعلي (Copied Toast).
-   - دعم مباشر لـ Web Share API للمشاركة عبر واتساب، تيليجرام، وتويتر/إكس.
-
-4. **🔍 بحث وتصنيف تفاعلي في سجل التحقيقات (History Filtering & Search):**
-   - شريط بحث فوري للنصوص المفحوصة مسبقاً.
-   - تبويبات فلترة حسب الحكم: (الكل، مدعوم، محتمل الصدق، غير مُتحقَّق، مضلل، خاطئ) مع عداد إحصائي حي لكل فئة.
-
-5. **💾 تصدير التقارير بصيغتي Markdown و JSON (Report Exporters):**
-   - إمكانية تنزيل تقرير توثيقي كامل بصيغة Markdown (`.md`) للأرشفة الصحفية والبحثية.
-   - تصدير كامل بنية البيانات بصيغة JSON (`.json`) للتحليل الآلي.
-
-6. **📊 تصنيف وفلترة الأدلة حسب الموقف (Evidence Stance Breakdown):**
-   - تبويبات تفاعلية لفرز الأدلة المسترجعة: أدلة داعمة (✅)، أدلة مناقضة/مكذبة (❌)، وأدلة سياقية (ℹ️).
-
-7. **⌨️ اختصارات لوحة المفاتيح والتحكم السريع (UX & Keyboard Shortcuts):**
-   - إمكانية الإرسال السريع بالضغط على `Ctrl + Enter` أو `Cmd + Enter`.
-   - زر مسح سريع لحقل النص بنقرة واحدة.
-   - مؤشر ذكي لحجم الادعاء مع تنبيه بمتطلبات الحد الأدنى للأحرف.
-
-8. **🔬 شفافية النموذج والذكاء الاصطناعي القابل للتفسير (XAI Transparency):**
-   - بطاقة تفاعلية توضح وزن مصادر الويب مقابل وزن النموذج اللغوي ومنطق اتخاذ القرار النهائي.
-
-9. **🖨️ طباعة نظيفة وتصميم متوافق مع كافة الشاشات (Print & Responsive Styling):**
-   - تصميم CSS مخصص للطباعة (`@media print`) يتيح طباعة تقرير التحقق مباشرة على ورق A4 بدون عناصر الواجهة الإضافية.
-   - تحسين قراءة الخطوط العربية RTL وسرعة التصيير.
-
-10. **🛡️ مرونة البناء والإعداد (Build Resilience):**
-    - قيم افتراضية آمنة للمنافذ والمسارات لتفادي أخطاء البيئات المتعددة.
+**TruthGuard AI** is an advanced, production-grade misinformation detection and fact-checking engine developed by **Yunis Al-Afeef** (`shoeabvv@gmail.com`). It unites multi-factor heuristic analysis, Google Fact Check / Schema.org standards, real-time web grounding, and multilingual NLP (Arabic & English) into an audit-ready verification platform.
 
 ---
 
-## 🏛️ البنية المعمارية للنظام (Architecture)
+## 🌟 Key Architecture & Modular Engines (21 Core Features)
 
-```text
-┌────────────────────────────────────────────────────────┐
-│             TruthGuard Web App (React 19)              │
-│       Vite + Tailwind CSS + TanStack Query + Wouter    │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-                           │  HTTP /api/verify, /api/history
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│               Node.js Express API Server               │
-│  - Arabic Normalizer & Sanitizer (text-normalizer.ts)  │
-│  - LRU TTL Cache Layer (cache.ts)                      │
-│  - Multi-Engine Web Evidence Harvester                 │
-│  - SQLite Local Persistence (DatabaseSync)             │
-└──────────────────────────┬─────────────────────────────┘
-                           │
-                           │  POST /predict (HTTP/JSON)
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│             Python ML Service (FastAPI)                │
-│  - TF-IDF N-Gram Vectorizer                            │
-│  - Balanced Logistic Regression Classifier             │
-│  - LIAR Benchmark Dataset                              │
-└────────────────────────────────────────────────────────┘
-```
+TruthGuard AI provides 21 dedicated engineering modules organized across analysis, infrastructure, and reporting:
+
+### 🔬 Core Heuristics & Verification
+1. **Sensationalism & Clickbait Index (`lib/sensationalism.ts`)**: Measures emotional buzzwords, punctuation hyperbole, and text excitement (0–100 scale).
+2. **Domain Trust & Source Registry (`lib/sources-registry.ts`)**: Curated reputation database covering accredited fact-checkers, satire domains, and state outlets.
+3. **Multi-Claim Atomic Decomposer (`lib/claim-extractor.ts`)**: Dissects multi-sentence compound posts into discrete testable propositions.
+4. **Multi-Factor Confidence Matrix (`lib/confidence-matrix.ts`)**: Weighted transparency scoring: Web Evidence (40%), ML Model (25%), Domain Trust (20%), Linguistic Neutrality (15%).
+5. **Semantic Claim Clustering (`lib/claim-clustering.ts`)**: Groups viral variants and paraphrased rumors via n-gram tokenization and Jaccard similarity.
+6. **Temporal Lifecycle & Velocity Tracker (`lib/temporal-tracker.ts`)**: Maps rumor acceleration, peak saturation, debunk latency, and recurrent zombie waves.
+7. **Image Forensics & Metadata Auditor (`lib/image-forensics.ts`)**: Detects AI generative markers (Midjourney, DALL-E) and recycled crisis photos.
+8. **Affective Manipulation & Polarization Radar (`lib/sentiment-polarization.ts`)**: Identifies fear-mongering, artificial urgency (FOMO), and outgroup hostility.
+9. **Societal Harm & Risk Profiler (`lib/risk-profiler.ts`)**: Evaluates threat levels across public health, civic elections, and financial security.
+10. **Multi-Registry Fact-Check Aggregator (`lib/factcheck-aggregator.ts`)**: Normalizes disparate ratings across IFCN signatories and calculates consensus agreement.
+
+### 🌐 Interoperability, Distribution & Formats
+11. **Google Fact Check ClaimReview (`lib/claim-review-schema.ts`)**: Schema.org JSON-LD generation for Google Search rich snippets.
+12. **Social Debunk Card Generator (`lib/debunk-card.ts`)**: Instant WhatsApp, Telegram, and X formatted debunk templates.
+13. **Dynamic SVG & HTML Badges (`lib/badge-generator.ts`)**: Embeddable status shields for newsrooms, blogs, and GitHub repositories.
+14. **Multi-Format Dossier Exporter (`lib/dossier-exporter.ts`)**: Auditable reports in Markdown, JSON, and print-styled HTML for PDF archiving.
+15. **Event-Driven Webhook Dispatcher (`lib/webhook-dispatcher.ts`)**: HMAC-SHA256 signed alerts for enterprise and newsroom CMS automation.
+16. **OpenAPI 3.1 Specification (`lib/openapi-spec.ts`)**: Machine-readable REST API contract.
+
+### ⚡ Infrastructure & Developer Experience
+17. **Bilingual i18n & RTL Engine (`lib/i18n.ts`)**: Comprehensive English/Arabic terminology with bi-directional layout support.
+18. **Local Investigation Bookmarks (`lib/bookmarks.ts`)**: Client-side encrypted bookmarks, tagging (#health, #politics), and query recall.
+19. **Sliding-Window Rate Limiter (`lib/rate-limiter.ts`)**: Token-bucket middleware protecting inference routes with HTTP `X-RateLimit-*` headers.
+20. **Interactive CLI Suite (`scripts/src/verify-cli.ts`)**: Terminal tool for batch inspections and continuous integration pipelines.
+21. **Batch Queue Engine (`lib/batch-verifier.ts`)**: Parallel evaluation of up to 15 claims with RFC-4180 CSV export.
 
 ---
 
-## 💻 التشغيل والتطوير المحلي (Local Development)
+## 💻 Quick Start & CLI Usage
 
-### المتطلبات الأساسية:
-- Node.js (v20 أو أحدث)
-- pnpm (أو npm)
-- Python 3.10+
-
-### خطوات التثبيت:
 ```bash
-# تثبيت الاعتماديات
+# Clone the repository
+git clone https://github.com/yunis-alafeef/TruthGuard-AI.git
+cd TruthGuard-AI
+
+# Install dependencies
 pnpm install
 
-# توليد مواصفات API
-pnpm --filter @workspace/api-spec run codegen
-
-# تدريب النموذج اللغوي الأولي (اختياري في حال وجود model.joblib)
-python3 -m services.ml_service.train
-
-# تشغيل خادم API والواجهة الأمامية
-pnpm --filter @workspace/api-server run dev
-pnpm --filter @workspace/truthguard-ai run dev
-```
-
-### فحص سلامة النظام والبناء:
-```bash
-# فحص الأنواع
-pnpm run typecheck
-
-# بناء الحزم للإنتاج
-pnpm run build
+# Run the CLI tool
+npx tsx scripts/src/verify-cli.ts "الماء يغلي عند 100 درجة مئوية"
 ```
 
 ---
 
-## 🏷️ الأحكام والتصنيفات (Verdicts)
+## 👨‍💻 Author & Maintainer
 
-| الحكم (Verdict) | الوصف | الموقف العام للأدلة |
-|:---|:---|:---|
-| **مدعوم (Supported)** | الادعاء مثبت ومؤكد عبر مصادر مستقلة متعددة دون تناقض. | دعم قوي ≥ 2 مصادر |
-| **محتمل الصدق (Likely True)** | مؤشرات إيجابية وسياق داعم، مع الحاجة للمزيد من التثبت المباشر. | أدلة جزئية أو ترجيح إيجابي |
-| **غير مُتحقَّق (Unverified)** | لا توجد مصادر كافية ومفهرسة للحكم بصورة قاطعة. | نتائج بحث غير كافية |
-| **مضلل (Misleading)** | الادعاء يتضمن معلومة مجتزأة أو تم تحوير سياقها الأصلي. | أدلة متضاربة ترجح الخطأ |
-| **خاطئ (False)** | الادعاء مفند ومنفي تماماً بالبراهين والتقارير الرسمية. | تناقض صريح وتكذيب مؤكد |
+**Yunis Al-Afeef**  
+- Email: `shoeabvv@gmail.com`  
+- GitHub: [@yunis-alafeef](https://github.com/yunis-alafeef)
 
----
-
-## 👨‍💻 إعداد وتطوير
-
-**المهندس: يونس العفيف (Yunis Al-Afeef)**  
-📧 البريد الإلكتروني: shoeabvv@gmail.com  
-🌐 المستودع الرسمي: [https://github.com/yunis-alafeef/TruthGuard-AI](https://github.com/yunis-alafeef/TruthGuard-AI)
-
-## 🌟 حزمة التحديثات التطويرية الجديدة (11 New Modular Features)
-تمت إضافة 11 ميزة وتحسيناً معمارياً برمجياً متقدماً بواسطة **م. يونس العفيف**:
-
-1. **محلل التهويل والإثارة اللغوية (Sensationalism & Clickbait Analyzer):**
-   - فحص المفردات المبالغ فيها وعلامات الترقيم الانفعالية في اللغتين العربية والإنجليزية.
-2. **سجل سمعة وتصنيف النطاقات والمصادر (Source Reputation & Bias Registry):**
-   - قاعدة بيانات مصنفة للنطاقات الصحفية، مبادرات التحقق المعتمدة دولياً، ومواقع السخرية.
-3. **مفكك الادعاءات المركبة (Multi-Claim Decomposition Engine):**
-   - تفكيك المقالات والمنشورات الطويلة إلى قضايا قابلة للفحص الذاتي مع تحديد الأولوية.
-4. **مولد بطاقات التفنيد لشبكات التواصل (Social Debunk Card Generator):**
-   - تنسيق تقارير الفحص الجاهزة للمشاركة عبر واتساب، إكس، وتيليجرام بنقرة واحدة.
-5. **مصفوفة الثقة والشفافية متعددة العوامل (Explainable Confidence Matrix):**
-   - توزيع أوزان الدرجة النهائية بين أدلة الويب (40%)، النموذج الإحصائي (25%)، موثوقية المصدر (20%)، والحياد اللغوي (15%).
-6. **محرك الفحص المجمّع وتصدير CSV (Batch Verification & CSV Exporter):**
-   - فحص حتى 15 ادعاء دفعة واحدة مع مؤشرات إحصائية مجمعة وتصدير جداول البيانات.
-7. **محرك التعريب والتدويل الكامل (Bilingual i18n & RTL/LTR Engine):**
-   - دعم كامل للتبديل بين العربية والإنجليزية مع ضبط اتجاه الواجهة والمصطلحات الدقيقة.
-8. **نظام الوسوم وحفظ التحقيقات محلياً (Local Bookmarks & Tagging System):**
-   - حفظ التحقيقات الهامة في الذاكرة المحلية وتصنيفها بوسوم موضوعية مخصصة.
-9. **محدد معدل الطلبات وحماية الخادم (Sliding-Window Rate Limiter):**
-   - وسيط Express لحماية واجهات الاستعلام من الاستغلال مع ترويسات `X-RateLimit-*`.
-10. **مولد شارات التحقق التفاعلية (Dynamic SVG Embed Badges):**
-    - توليد شارات SVG مرنة لإدراجها في المواقع الإخبارية والمدونات ومستودعات GitHub.
-11. **أداة سطر الأوامر التفاعلية والتوثيق المرجعي (CLI Tool & Developer Docs):**
-    - تشغيل التحقيق مباشرة عبر الطرفية باستخدام `tsx scripts/src/verify-cli.ts "نص الادعاء"`.
+Licensed under the [MIT License](LICENSE).
