@@ -1,6 +1,6 @@
 # ============================================================================
 # TruthGuard AI (حارس الحقيقة) - Production Multi-Stage Dockerfile
-# Optimized for: Koyeb (Eco Tier), Hugging Face Spaces, Fly.io, Railway
+# Optimized for: Hugging Face Spaces (16GB RAM), Zeabur, Fly.io, Docker Hosts
 # Author: Eng. Yunis Al-Afeef <shoeabvv@gmail.com>
 # ============================================================================
 
@@ -43,7 +43,8 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+# Hugging Face Spaces default port is 7860, standard web hosts use 3000
+ENV PORT=7860
 
 # Copy compiled backend bundle from builder
 COPY --from=builder /workspace/artifacts/api-server/dist ./dist
@@ -51,14 +52,14 @@ COPY --from=builder /workspace/artifacts/api-server/dist ./dist
 # Copy built frontend assets to public directory for static serving
 COPY --from=builder /workspace/artifacts/truthguard-ai/dist/public ./public
 
-# Expose standard port (Koyeb routes traffic to 3000 by default)
-EXPOSE 3000
+# Expose standard Hugging Face Spaces & container ports
+EXPOSE 7860 3000
 
-# Automated health check probe for Koyeb & Docker orchestrators
+# Automated health check probe for orchestrators
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:${PORT:-7860}/api/health || exit 1
 
-# Run with non-root node user for enterprise container security
+# Run with non-root node user for enterprise container security (uid 1000 required for HF Spaces)
 USER node
 
 # Start the unified TruthGuard AI service
