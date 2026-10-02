@@ -3,16 +3,8 @@ import { logger } from "./lib/logger";
 import { spawn } from "node:child_process";
 import path from "node:path";
 
-const rawPort = process.env["PORT"];
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
+const rawPort = process.env["PORT"] || "3000";
 const port = Number(rawPort);
-
 if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
@@ -36,10 +28,15 @@ const mlService = process.env.ML_SERVICE_URL
       },
     );
 
-mlService?.stdout.on("data", (chunk: Buffer) => {
+mlService?.on("error", (err) => {
+  logger.warn({ message: err.message }, "ML Python service unavailable, using integrated AI engine");
+});
+
+mlService?.stdout?.on("data", (chunk: Buffer) => {
   logger.info({ service: "ml", message: chunk.toString().trim() });
 });
-mlService?.stderr.on("data", (chunk: Buffer) => {
+
+mlService?.stderr?.on("data", (chunk: Buffer) => {
   logger.warn({ service: "ml", message: chunk.toString().trim() });
 });
 
@@ -48,7 +45,6 @@ app.listen(port, (err) => {
     logger.error({ err }, "Error listening on port");
     process.exit(1);
   }
-
   logger.info({ port }, "Server listening");
 });
 

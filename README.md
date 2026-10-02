@@ -6,6 +6,10 @@
 [![Fact Check Engine](https://img.shields.io/badge/TruthGuard-v3.0_Enterprise-emerald.svg)](https://github.com/yunis-alafeef/TruthGuard-AI)
 [![OpenAPI 3.1](https://img.shields.io/badge/OpenAPI-3.1-black.svg)](lib/openapi-spec.ts)
 [![Manifest V3](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-orange.svg)](extension/manifest.json)
+[![Deployment Guide](https://img.shields.io/badge/Deployment-Koyeb%20Free%20%7C%20Docker-emerald.svg)](DEPLOYMENT_GUIDE_AR.md)
+
+> 🚀 **دليل النشر والتشغيل السحابي المجاني (باللغة العربية):** تم إعداد وتوثيق دليل احترافي كامل لنشر وتشغيل المنظومة مجاناً 100% على خوادم **Koyeb** و **Hugging Face Spaces** دون قيود Render ومشاكل السكون: [راجع الدليل الكامل هنا (DEPLOYMENT_GUIDE_AR.md)](DEPLOYMENT_GUIDE_AR.md).
+
 
 **TruthGuard AI** is a comprehensive, production-grade misinformation detection, fact-checking, and digital verification suite designed and maintained by **Yunis Al-Afeef** (`shoeabvv@gmail.com`). 
 
