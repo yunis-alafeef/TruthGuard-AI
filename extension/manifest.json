@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "TruthGuard AI - Live Fact Checker",
+  "version": "1.0.0",
+  "description": "Highlight any claim on the web for real-time verification and sensationalism scoring.",
+  "author": "Yunis Al-Afeef <shoeabvv@gmail.com>",
+  "permissions": [
+    "activeTab",
+    "contextMenus",
+    "storage"
+  ],
+  "action": {
+    "default_title": "TruthGuard AI",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  }
+}
