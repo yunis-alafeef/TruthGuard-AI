@@ -39,6 +39,8 @@ const VERDICT_MAP_AR: Record<VeracityVerdict, string> = {
   'Unverified': 'غير مؤكد لعدم كفاية الأدلة'
 };
 
+const CANDIDATE_MODELS = ['gemini-flash-latest', 'gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash'];
+
 /**
  * Evaluates evidence using Google Gemini API
  */
@@ -112,52 +114,67 @@ ${evidenceFormatted}
 
 Please provide your rigorous evidence evaluation in JSON.`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          systemInstruction,
-          responseMimeType: 'application/json',
-          temperature: 0.1
+      let responseText = '';
+      let usedModelName = 'gemini-flash-latest';
+
+      for (const candidate of CANDIDATE_MODELS) {
+        try {
+          const res = await ai.models.generateContent({
+            model: candidate,
+            contents: prompt,
+            config: {
+              systemInstruction,
+              responseMimeType: 'application/json',
+              temperature: 0.1
+            }
+          });
+          if (res && res.text) {
+            responseText = res.text;
+            usedModelName = candidate;
+            break;
+          }
+        } catch {
+          continue;
         }
-      });
+      }
 
-      const responseText = response.text || '';
-      const parsed = JSON.parse(responseText.replace(/```json|```/g, '').trim());
+      if (responseText) {
+        const parsed = JSON.parse(responseText.replace(/```json|```/g, '').trim());
 
-      const verdict: VeracityVerdict = ['True', 'Likely True', 'Misleading', 'False', 'Unverified'].includes(parsed.verdict)
-        ? parsed.verdict
-        : 'Unverified';
+        const verdict: VeracityVerdict = ['True', 'Likely True', 'Misleading', 'False', 'Unverified'].includes(parsed.verdict)
+          ? parsed.verdict
+          : 'Unverified';
 
-      const evaluatedEvidence: EvaluatedEvidenceItem[] = evidenceList.map((e, idx) => {
-        const itemStance = parsed.evidenceStances?.find((s: { index: number }) => s.index === idx + 1);
+        const evaluatedEvidence: EvaluatedEvidenceItem[] = evidenceList.map((e, idx) => {
+          const itemStance = parsed.evidenceStances?.find((s: { index: number }) => s.index === idx + 1);
+          return {
+            url: e.url,
+            publisher: e.publisher,
+            stance: itemStance?.stance || e.stance || 'context',
+            relevanceExplanationAr: itemStance?.reasonAr || `تم توظيف هذا المصدر في فحص السياق عبر ${e.publisher}`,
+            relevanceExplanationEn: itemStance?.reasonEn || `Source utilized for contextual cross-reference via ${e.publisher}`
+          };
+        });
+
         return {
-          url: e.url,
-          publisher: e.publisher,
-          stance: itemStance?.stance || e.stance || 'context',
-          relevanceExplanationAr: itemStance?.reasonAr || `تم توظيف هذا المصدر في فحص السياق عبر ${e.publisher}`,
-          relevanceExplanationEn: itemStance?.reasonEn || `Source utilized for contextual cross-reference via ${e.publisher}`
+          verdict,
+          verdictAr: VERDICT_MAP_AR[verdict],
+          confidenceScore: Math.min(98, Math.max(35, Number(parsed.confidenceScore) || 75)),
+          summaryAr: parsed.summaryAr,
+          summaryEn: parsed.summaryEn,
+          keyDiscrepanciesAr: parsed.keyDiscrepanciesAr || [],
+          keyDiscrepanciesEn: parsed.keyDiscrepanciesEn || [],
+          evaluatedEvidence,
+          modelUsed: `Google Gemini (${usedModelName}) RAG Grounded`,
+          reasoningTimeMs: Date.now() - startTime
         };
-      });
-
-      return {
-        verdict,
-        verdictAr: VERDICT_MAP_AR[verdict],
-        confidenceScore: Math.min(98, Math.max(35, Number(parsed.confidenceScore) || 75)),
-        summaryAr: parsed.summaryAr,
-        summaryEn: parsed.summaryEn,
-        keyDiscrepanciesAr: parsed.keyDiscrepanciesAr || [],
-        keyDiscrepanciesEn: parsed.keyDiscrepanciesEn || [],
-        evaluatedEvidence,
-        modelUsed: 'Google Gemini 2.5 Flash (RAG Grounded)',
-        reasoningTimeMs: Date.now() - startTime
-      };
+      }
     } catch {
-      // Fallback to deterministic evidence scoring below
+      // Fallback to deterministic scoring below
     }
   }
 
-  // Deterministic Fallback Logic (if Gemini API key is absent or network fails)
+  // Deterministic Fallback Logic (if Gemini API key is absent or all models fail)
   let verdict: VeracityVerdict = 'Likely True';
   let conf = 70;
   let summaryAr = '';
