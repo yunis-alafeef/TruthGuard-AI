@@ -190,10 +190,10 @@ export default function App() {
   };
 
   const sampleClaims = [
+    { ar: 'عاجل: الحوثيون في اليمن يستولون على محافظة عدن', en: 'Breaking: Houthis in Yemen seize control of Aden governorate' },
     { ar: 'محطة الفضاء الدولية تدور حول الأرض مرة كل 90 دقيقة', en: 'The ISS orbits Earth once every 90 minutes' },
-    { ar: 'عاجل: ناسا تؤكد اصطدام كويكب مدمر بالأرض الشهر القادم', en: 'Breaking: NASA confirms asteroid collision with Earth next month' },
-    { ar: 'شرب الماء الدافئ مع الليمون يعالج السرطان نهائياً', en: 'Drinking warm lemon water cures cancer completely' },
-    { ar: 'سور الصين العظيم هو المعلم الوحيد المرئي بالعين المجردة من الفضاء', en: 'Great Wall of China is the only human structure visible from space' }
+    { ar: 'عاجل: إغلاق تام لمطار بغداد الدولي في العراق إثر هجوم صاروخي', en: 'Breaking: Total closure of Baghdad Airport in Iraq after strike' },
+    { ar: 'شرب الماء الدافئ مع الليمون يعالج السرطان نهائياً', en: 'Drinking warm lemon water cures cancer completely' }
   ];
 
   const getVerdictBadge = (verdict: string) => {
@@ -652,6 +652,11 @@ export default function App() {
                               <span className="text-xs font-bold text-white">
                                 {src.publisher || src.domain}
                               </span>
+                              {src.regionLabelAr && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-cyan-300 border border-slate-700/80">
+                                  {src.regionLabelAr}
+                                </span>
+                              )}
                               {src.isFactChecker && (
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-950 text-teal-300 border border-teal-800">
                                   {lang === 'ar' ? 'هيئة تحقق معتمدة' : 'Verified Fact-Checker'}
