@@ -11,20 +11,24 @@ import {
   Download,
   Search,
   Bookmark,
-  BookmarkCheck,
   Trash2,
   Globe,
   Sparkles,
   Layers,
   BarChart3,
-  ListFilter,
   Flame,
   Zap,
   RefreshCw,
   ExternalLink,
-  ChevronRight,
-  AlertCircle
+  AlertCircle,
+  Settings,
+  X,
+  Clock,
+  Radio,
+  Sliders,
+  CheckCircle2
 } from 'lucide-react';
+import { THEMES, ThemeConfig } from './theme';
 
 interface Factor {
   nameAr: string;
@@ -44,6 +48,10 @@ interface EvidenceSource {
   stance?: 'supports' | 'contradicts' | 'context';
   snippet?: string;
   publishedDate?: string;
+  relativeTime?: string;
+  isToday?: boolean;
+  region?: 'yemen' | 'gulf' | 'iraq' | 'factchecker' | 'major_channel' | 'pan_arab';
+  regionLabelAr?: string;
 }
 
 interface VerificationResult {
@@ -70,6 +78,7 @@ interface VerificationResult {
   sourcesCount?: number;
   factCheckMatches?: number;
   newsArticlesCount?: number;
+  todayArticlesCount?: number;
   modelUsed?: string;
   architecture?: string;
   verifiedAt: string;
@@ -78,6 +87,10 @@ interface VerificationResult {
 export default function App() {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const [activeTab, setActiveTab] = useState<'verifier' | 'batch' | 'history'>('verifier');
+
+  // Theme State
+  const [themeId, setThemeId] = useState<string>('emerald');
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
 
   // Verifier State
   const [inputClaim, setInputClaim] = useState('');
@@ -95,22 +108,37 @@ export default function App() {
 
   // Batch State
   const [batchInput, setBatchInput] = useState(
-    'شرب الماء الدافئ مع الليمون يعالج السرطان نهائياً\n' +
+    'عاجل: الحوثيون في اليمن يستولون على محافظة عدن\n' +
     'محطة الفضاء الدولية تدور حول الأرض مرة كل 90 دقيقة\n' +
-    'عاجل: إيلون ماسك يشتري شركة أبل بصفقة سرية'
+    'شرب الماء الدافئ مع الليمون يعالج السرطان نهائياً'
   );
   const [batchResults, setBatchResults] = useState<VerificationResult[]>([]);
   const [isBatchRunning, setIsBatchRunning] = useState(false);
 
-  // Load history from localStorage on mount
+  // Load theme & history on mount
   useEffect(() => {
     try {
+      const savedTheme = localStorage.getItem('truthguard_theme');
+      if (savedTheme && THEMES[savedTheme]) {
+        setThemeId(savedTheme);
+      }
       const saved = localStorage.getItem('truthguard_saved_history');
       if (saved) setHistory(JSON.parse(saved));
     } catch (e) {
       console.error(e);
     }
   }, []);
+
+  const handleSelectTheme = (newThemeId: string) => {
+    setThemeId(newThemeId);
+    try {
+      localStorage.setItem('truthguard_theme', newThemeId);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const currentTheme: ThemeConfig = THEMES[themeId] || THEMES.emerald;
 
   const saveToHistory = (item: VerificationResult) => {
     const updated = [item, ...history.filter(h => h.claim !== item.claim)];
@@ -142,8 +170,8 @@ export default function App() {
       } catch {
         throw new Error(
           lang === 'ar'
-            ? 'تعذر قراءة رد الخادم بصيغة JSON. تأكد من إعداد متغيرات البيئة في Vercel.'
-            : 'Invalid server response. Please verify Vercel environment variables.'
+            ? 'تعذر قراءة رد الخادم بصيغة JSON. يرجى إعادة المحاولة.'
+            : 'Invalid server response. Please retry.'
         );
       }
 
@@ -190,9 +218,9 @@ export default function App() {
   };
 
   const sampleClaims = [
-    { ar: 'عاجل: الحوثيون في اليمن يستولون على محافظة عدن', en: 'Breaking: Houthis in Yemen seize control of Aden governorate' },
+    { ar: 'عاجل: الحوثيون في اليمن يستولون على محافظة عدن', en: 'Breaking: Houthis in Yemen seize control of Aden' },
     { ar: 'محطة الفضاء الدولية تدور حول الأرض مرة كل 90 دقيقة', en: 'The ISS orbits Earth once every 90 minutes' },
-    { ar: 'عاجل: إغلاق تام لمطار بغداد الدولي في العراق إثر هجوم صاروخي', en: 'Breaking: Total closure of Baghdad Airport in Iraq after strike' },
+    { ar: 'عاجل: إغلاق تام لمطار بغداد الدولي إثر هجوم صاروخي', en: 'Breaking: Total closure of Baghdad Airport after strike' },
     { ar: 'شرب الماء الدافئ مع الليمون يعالج السرطان نهائياً', en: 'Drinking warm lemon water cures cancer completely' }
   ];
 
@@ -202,8 +230,7 @@ export default function App() {
       case 'true':
         return {
           icon: <ShieldCheck className="w-5 h-5 text-emerald-400" />,
-          bg: 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300',
-          dot: 'bg-emerald-400',
+          bg: 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300',
           labelAr: 'صحيح ومؤكد',
           labelEn: 'Supported & True'
         };
@@ -211,24 +238,21 @@ export default function App() {
       case 'likely_true':
         return {
           icon: <ShieldCheck className="w-5 h-5 text-teal-400" />,
-          bg: 'bg-teal-950/60 border-teal-500/40 text-teal-300',
-          dot: 'bg-teal-400',
+          bg: 'bg-teal-950/70 border-teal-500/40 text-teal-300',
           labelAr: 'صحيح غالباً',
           labelEn: 'Mostly True'
         };
       case 'misleading':
         return {
           icon: <ShieldAlert className="w-5 h-5 text-amber-400" />,
-          bg: 'bg-amber-950/60 border-amber-500/40 text-amber-300',
-          dot: 'bg-amber-400',
+          bg: 'bg-amber-950/70 border-amber-500/40 text-amber-300',
           labelAr: 'مضلل / ينقصه السياق',
           labelEn: 'Misleading Context'
         };
       case 'false':
         return {
           icon: <ShieldX className="w-5 h-5 text-rose-400" />,
-          bg: 'bg-rose-950/60 border-rose-500/40 text-rose-300',
-          dot: 'bg-rose-400',
+          bg: 'bg-rose-950/70 border-rose-500/40 text-rose-300',
           labelAr: 'زائف تماماً',
           labelEn: 'False & Fabricated'
         };
@@ -236,163 +260,180 @@ export default function App() {
         return {
           icon: <HelpCircle className="w-5 h-5 text-slate-400" />,
           bg: 'bg-slate-900 border-slate-700 text-slate-300',
-          dot: 'bg-slate-400',
-          labelAr: 'غير مؤكد لقلة الأدلة',
-          labelEn: 'Unverified / Disputed'
+          labelAr: 'غير مؤكد / قيد التطور',
+          labelEn: 'Unverified / Developing'
         };
     }
   };
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col ${lang === 'ar' ? 'font-sans' : 'font-sans'}`} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-slate-950/80 border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-          {/* Logo & Platform Info */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-400 p-0.5 shadow-lg shadow-emerald-500/20">
+    <div
+      className={`min-h-screen transition-colors duration-300 flex flex-col font-sans ${currentTheme.pageBg}`}
+      dir={lang === 'ar' ? 'rtl' : 'ltr'}
+    >
+      {/* MINIMALIST & SLEEK EXECUTIVE HEADER */}
+      <header className={`sticky top-0 z-40 backdrop-blur-md border-b transition-colors duration-300 ${currentTheme.headerBg}`}>
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+          
+          {/* Brand Logo & Name */}
+          <div className="flex items-center gap-2.5">
+            <div className={`w-9 h-9 rounded-xl bg-gradient-to-tr ${currentTheme.logoGradient} p-0.5 shadow-md ${currentTheme.accentGlow}`}>
               <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Shield className="w-5 h-5 text-emerald-400" />
+                <Shield className={`w-5 h-5 ${currentTheme.accentText}`} />
               </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-teal-200 bg-clip-text text-transparent">
-                  TruthGuard AI
-                </span>
-                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  {lang === 'ar' ? 'حارس الحقيقة' : 'v3.0'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">
-                {lang === 'ar' ? 'إعداد وعمل المهندس يونس العفيف' : 'Engineered by Eng. Yunis Al-Afeef'}
-              </p>
+            <div className="flex items-center gap-2">
+              <span className={`text-lg sm:text-xl font-extrabold tracking-tight ${currentTheme.textPrimary}`}>
+                TruthGuard
+              </span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${currentTheme.accentBadge}`}>
+                v3.2
+              </span>
             </div>
           </div>
 
-          {/* Clean Focused Navigation Tabs */}
-          <div className="hidden md:flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          {/* Desktop Navigation Tabs (Pills) */}
+          <nav className={`hidden md:flex items-center gap-1 p-1 rounded-xl border ${currentTheme.cardBorder} ${currentTheme.cardBg}`}>
             <button
               onClick={() => setActiveTab('verifier')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'verifier'
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  ? `${currentTheme.navActiveBg} ${currentTheme.navActiveText} shadow-sm`
+                  : `${currentTheme.textSecondary} hover:${currentTheme.textPrimary} hover:bg-slate-800/40`
               }`}
             >
-              <Sparkles className="w-4 h-4" />
-              <span>{lang === 'ar' ? 'فاحص الادعاءات الفوري' : 'Instant Claim Verifier'}</span>
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{lang === 'ar' ? 'فاحص الادعاءات' : 'Claim Verifier'}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('batch')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'batch'
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  ? `${currentTheme.navActiveBg} ${currentTheme.navActiveText} shadow-sm`
+                  : `${currentTheme.textSecondary} hover:${currentTheme.textPrimary} hover:bg-slate-800/40`
               }`}
             >
-              <Layers className="w-4 h-4" />
+              <Layers className="w-3.5 h-3.5" />
               <span>{lang === 'ar' ? 'الفحص المجمّع' : 'Batch Verifier'}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 activeTab === 'history'
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                  ? `${currentTheme.navActiveBg} ${currentTheme.navActiveText} shadow-sm`
+                  : `${currentTheme.textSecondary} hover:${currentTheme.textPrimary} hover:bg-slate-800/40`
               }`}
             >
-              <Bookmark className="w-4 h-4" />
-              <span>{lang === 'ar' ? 'سجل التحقيقات' : 'History'}</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-900 text-emerald-400 font-bold border border-slate-800">
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>{lang === 'ar' ? 'السجل' : 'History'}</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 font-bold">
                 {history.length}
               </span>
             </button>
-          </div>
+          </nav>
 
-          {/* Right Action: Language Switcher & GitHub repo link */}
+          {/* Right Action Buttons: Settings & Language */}
           <div className="flex items-center gap-2">
-            <a
-              href="https://github.com/yunis-alafeef/TruthGuard-AI"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
-              title="Open GitHub Repo"
+            {/* Settings Button */}
+            <button
+              onClick={() => setShowSettingsModal(true)}
+              className={`p-2 rounded-xl text-xs font-medium border transition flex items-center gap-1.5 ${currentTheme.cardBorder} hover:border-slate-600 ${currentTheme.textSecondary} hover:${currentTheme.textPrimary}`}
+              title={lang === 'ar' ? 'لوحة الإعدادات والثيمات' : 'Settings & Themes'}
             >
-              <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">GitHub</span>
-            </a>
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline text-xs">{lang === 'ar' ? 'الإعدادات' : 'Settings'}</span>
+            </button>
 
+            {/* Language Switcher */}
             <button
               onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-              className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center gap-1.5 border border-slate-700"
+              className={`px-2.5 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 ${currentTheme.cardBorder} hover:border-slate-600 ${currentTheme.textSecondary} hover:${currentTheme.textPrimary}`}
             >
-              <Globe className="w-3.5 h-3.5 text-teal-400" />
+              <Globe className="w-3.5 h-3.5" />
               <span>{lang === 'ar' ? 'English' : 'عربي'}</span>
             </button>
           </div>
         </div>
 
-        {/* Mobile Submenu */}
-        <div className="flex md:hidden border-t border-slate-800 px-4 py-2 overflow-x-auto gap-2 bg-slate-950">
+        {/* Mobile Navigation Tabs Bar */}
+        <div className={`flex md:hidden border-t px-3 py-2 overflow-x-auto gap-2 scrollbar-none ${currentTheme.cardBorder}`}>
           <button
             onClick={() => setActiveTab('verifier')}
-            className={`px-3 py-1 rounded text-xs shrink-0 font-medium ${activeTab === 'verifier' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs shrink-0 font-bold transition ${
+              activeTab === 'verifier'
+                ? `${currentTheme.navActiveBg} ${currentTheme.navActiveText}`
+                : `${currentTheme.textSecondary}`
+            }`}
           >
-            فاحص الادعاءات
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{lang === 'ar' ? 'فاحص الادعاءات' : 'Claim Verifier'}</span>
           </button>
+          
           <button
             onClick={() => setActiveTab('batch')}
-            className={`px-3 py-1 rounded text-xs shrink-0 font-medium ${activeTab === 'batch' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs shrink-0 font-bold transition ${
+              activeTab === 'batch'
+                ? `${currentTheme.navActiveBg} ${currentTheme.navActiveText}`
+                : `${currentTheme.textSecondary}`
+            }`}
           >
-            الفحص المجمع
+            <Layers className="w-3.5 h-3.5" />
+            <span>{lang === 'ar' ? 'الفحص المجمّع' : 'Batch Verifier'}</span>
           </button>
+
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-3 py-1 rounded text-xs shrink-0 font-medium ${activeTab === 'history' ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs shrink-0 font-bold transition ${
+              activeTab === 'history'
+                ? `${currentTheme.navActiveBg} ${currentTheme.navActiveText}`
+                : `${currentTheme.textSecondary}`
+            }`}
           >
-            السجل ({history.length})
+            <Bookmark className="w-3.5 h-3.5" />
+            <span>{lang === 'ar' ? 'السجل' : 'History'} ({history.length})</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-8">
+        
         {/* Error Notice Banner */}
         {errorMessage && (
-          <div className="mb-6 p-4 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-200 text-sm flex items-start justify-between gap-3 shadow-lg">
+          <div className="mb-6 p-4 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-200 text-sm flex items-start justify-between gap-3 shadow-lg animate-fadeIn">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">{lang === 'ar' ? 'تنبيه التدقيق' : 'Verification Alert'}</p>
+                <p className="font-bold">{lang === 'ar' ? 'تنبيه التدقيق' : 'Verification Alert'}</p>
                 <p className="text-rose-300 text-xs mt-1 leading-relaxed">{errorMessage}</p>
               </div>
             </div>
             <button
               onClick={() => setErrorMessage(null)}
-              className="text-rose-400 hover:text-white text-xs px-2 py-1 rounded bg-rose-900/40 hover:bg-rose-900/70 transition"
+              className="text-rose-400 hover:text-white text-xs px-2.5 py-1 rounded-lg bg-rose-900/40 hover:bg-rose-900 transition"
             >
-              {lang === 'ar' ? 'إغلاق' : 'Dismiss'}
+              ✕
             </button>
           </div>
         )}
 
-        {/* TAB 1: INSTANT CLAIM VERIFIER */}
+        {/* TAB 1: CLAIM VERIFIER */}
         {activeTab === 'verifier' && (
-          <div className="space-y-8 animate-fadeIn max-w-4xl mx-auto">
-            {/* Search and Claim Input Section */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl space-y-4">
+          <div className="space-y-6 sm:space-y-8 animate-fadeIn">
+            
+            {/* Search and Input Card */}
+            <div className={`rounded-2xl border p-4 sm:p-6 shadow-xl space-y-4 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
               <div className="flex items-center justify-between">
-                <label className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-emerald-400" />
-                  <span>{lang === 'ar' ? 'أدخل الادعاء أو الخبر المشبوه للفحص الفوري:' : 'Enter Claim or Headline to Fact-Check:'}</span>
+                <label className={`text-sm font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+                  <Sparkles className={`w-4 h-4 ${currentTheme.accentText}`} />
+                  <span>{lang === 'ar' ? 'أدخل الادعاء أو الخبر للفحص الفوري ومطابقة القنوات:' : 'Enter Claim or Breaking Headline:'}</span>
                 </label>
                 {inputClaim && (
                   <button
                     onClick={() => setInputClaim('')}
-                    className="text-xs text-slate-400 hover:text-rose-400 transition"
+                    className="text-xs text-rose-400 hover:underline transition"
                   >
                     {lang === 'ar' ? 'مسح' : 'Clear'}
                   </button>
@@ -403,15 +444,16 @@ export default function App() {
                 value={inputClaim}
                 onChange={e => setInputClaim(e.target.value)}
                 rows={3}
-                placeholder={lang === 'ar' ? 'اكتب أو الصق نص الخبر، التغريدة، أو المنشور المراد التحقق من صدقه هنا...' : 'Paste claim, news post, or headline here...'}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition leading-relaxed"
+                placeholder={lang === 'ar' ? 'اكتب أو الصق نص الخبر، التصريح، أو المنشور هنا للتحقق منه عبر القنوات والوكالات...' : 'Paste claim or breaking headline to verify...'}
+                className={`w-full rounded-xl p-4 text-sm sm:text-base placeholder:text-slate-500 focus:outline-none transition leading-relaxed border ${currentTheme.inputBg} ${currentTheme.inputBorder} ${currentTheme.textPrimary}`}
               />
 
               {/* Sample Queries */}
-              <div className="space-y-1.5">
-                <span className="text-xs text-slate-400 block font-medium">
-                  {lang === 'ar' ? '💡 نماذج شائعة للاختبار السريع:' : '💡 Sample trending claims:'}
-                </span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                  <Radio className={`w-3.5 h-3.5 ${currentTheme.accentText}`} />
+                  <span>{lang === 'ar' ? '💡 نماذج سريعة للاختبار (أحداث حية وإقليمية):' : '💡 Sample queries:'}</span>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {sampleClaims.map((sample, idx) => (
                     <button
@@ -421,7 +463,7 @@ export default function App() {
                         setInputClaim(txt);
                         handleVerify(txt);
                       }}
-                      className="px-2.5 py-1.5 rounded-lg text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-emerald-400 border border-slate-700/60 transition text-start"
+                      className={`px-3 py-1.5 rounded-lg text-xs transition border text-start ${currentTheme.cardBorder} bg-black/20 hover:bg-black/40 ${currentTheme.textSecondary} hover:${currentTheme.accentText}`}
                     >
                       {lang === 'ar' ? sample.ar : sample.en}
                     </button>
@@ -429,20 +471,21 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Submit Action */}
               <div className="pt-2 flex justify-end">
                 <button
                   onClick={() => handleVerify()}
                   disabled={isVerifying || !inputClaim.trim()}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg ${
+                  className={`w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3 rounded-xl text-sm font-bold transition shadow-lg ${
                     isVerifying || !inputClaim.trim()
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-emerald-500/20'
+                      : `${currentTheme.accentBtn} ${currentTheme.accentGlow}`
                   }`}
                 >
                   {isVerifying ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin text-slate-950" />
-                      <span>{lang === 'ar' ? 'جارٍ الفحص والمطابقة الحية...' : 'Cross-Referencing Evidence...'}</span>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>{lang === 'ar' ? 'جارٍ فحص القنوات ومطابقة الأدلة الحية...' : 'Cross-Referencing Arab Channels...'}</span>
                     </>
                   ) : (
                     <>
@@ -457,31 +500,33 @@ export default function App() {
             {/* VERIFICATION REPORT RESULT */}
             {currentResult && (
               <div className="space-y-6 animate-fadeIn">
-                {/* Result Hero Header */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl relative overflow-hidden">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
-                    <div>
-                      <span className="text-xs text-slate-400 uppercase tracking-wider block font-semibold mb-1">
-                        {lang === 'ar' ? 'نتيجة التحقق النهائي من الادعاء' : 'Official Verification Verdict'}
+                
+                {/* Result Card Hero */}
+                <div className={`rounded-2xl border p-5 sm:p-7 shadow-xl space-y-5 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
+                  
+                  {/* Verdict Row */}
+                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b ${currentTheme.cardBorder}`}>
+                    <div className="space-y-1">
+                      <span className="text-xs uppercase tracking-wider block font-bold text-slate-400">
+                        {lang === 'ar' ? 'نتيجة التدقيق النهائي' : 'Official Verification Verdict'}
                       </span>
-                      <h2 className="text-xl md:text-2xl font-bold text-white leading-snug">
+                      <h2 className={`text-lg sm:text-xl font-bold leading-snug ${currentTheme.textPrimary}`}>
                         "{currentResult.claim}"
                       </h2>
                     </div>
 
-                    {/* Verdict Pill Badge */}
-                    <div className="shrink-0 flex items-center gap-3">
+                    <div className="shrink-0">
                       {(() => {
                         const badge = getVerdictBadge(currentResult.verdict);
                         return (
-                          <div className={`px-4 py-2 rounded-xl border flex items-center gap-2.5 shadow-sm ${badge.bg}`}>
+                          <div className={`px-4 py-2.5 rounded-xl border flex items-center gap-2.5 shadow-sm ${badge.bg}`}>
                             {badge.icon}
-                            <div className="text-start">
-                              <span className="block text-xs font-bold leading-none">
+                            <div>
+                              <span className="block text-xs font-bold leading-tight">
                                 {lang === 'ar' ? currentResult.verdictLabelAr || badge.labelAr : currentResult.verdictLabelEn || badge.labelEn}
                               </span>
                               <span className="text-[10px] opacity-80 mt-0.5 block">
-                                {lang === 'ar' ? `ثقة: ${currentResult.confidenceScore}%` : `Confidence: ${currentResult.confidenceScore}%`}
+                                {lang === 'ar' ? `دقة الثقة: ${currentResult.confidenceScore}%` : `Confidence: ${currentResult.confidenceScore}%`}
                               </span>
                             </div>
                           </div>
@@ -490,45 +535,45 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Verdict Analytical Summary */}
-                  <div className="py-5 space-y-3">
-                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-emerald-400" />
+                  {/* Summary Box */}
+                  <div className="space-y-2">
+                    <h3 className={`text-sm font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+                      <Zap className={`w-4 h-4 ${currentTheme.accentText}`} />
                       <span>{lang === 'ar' ? 'الخلاصة التحليلية والحقائق المثبتة:' : 'Analytical Synthesis & Verified Facts:'}</span>
                     </h3>
-                    <p className="text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                    <p className={`text-sm leading-relaxed p-4 rounded-xl border ${currentTheme.inputBg} ${currentTheme.cardBorder} ${currentTheme.textSecondary}`}>
                       {lang === 'ar' ? currentResult.summaryAr : currentResult.summaryEn}
                     </p>
                   </div>
 
-                  {/* Architecture & Grounding Badge */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/60 text-xs text-slate-400">
+                  {/* Real-time Channels & Share Bar */}
+                  <div className={`flex flex-wrap items-center justify-between gap-3 pt-4 border-t ${currentTheme.cardBorder} text-xs text-slate-400`}>
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className={`w-2.5 h-2.5 rounded-full ${currentTheme.matrixBar} animate-pulse`}></span>
                       <span>
                         {lang === 'ar'
-                          ? `المحرك: ${currentResult.modelUsed || 'Google Gemini RAG'} عبر مصادر إخبارية حية`
-                          : `Engine: ${currentResult.modelUsed || 'Google Gemini RAG'} via live news sources`}
+                          ? `مطابقة الأخبار: ${currentResult.sourcesCount || 0} مصدر (منها ${currentResult.todayArticlesCount || 0} خبر اليوم)`
+                          : `Sources: ${currentResult.sourcesCount || 0} (${currentResult.todayArticlesCount || 0} today)`}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
-                          const debunkText = `🔍 تقرير التحقق من TruthGuard AI:\nالادعاء: "${currentResult.claim}"\nالنتيجة: ${currentResult.verdictLabelAr}\nنسبة الثقة: ${currentResult.confidenceScore}%\nالملخص: ${currentResult.summaryAr}\nالمصادر: ${currentResult.sources?.map(s => s.domain).slice(0, 3).join(', ')}`;
+                          const debunkText = `🔍 تقرير TruthGuard AI:\nالادعاء: "${currentResult.claim}"\nالنتيجة: ${currentResult.verdictLabelAr}\nنسبة الثقة: ${currentResult.confidenceScore}%\nالملخص: ${currentResult.summaryAr}\nالمصادر: ${currentResult.sources?.map(s => s.publisher || s.domain).slice(0, 3).join(', ')}`;
                           navigator.clipboard.writeText(debunkText);
                           setCopiedDebunk(true);
                           setTimeout(() => setCopiedDebunk(false), 2500);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition ${currentTheme.cardBorder} hover:bg-black/30 ${currentTheme.textSecondary}`}
                       >
-                        {copiedDebunk ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedDebunk ? <Check className={`w-3.5 h-3.5 ${currentTheme.accentText}`} /> : <Copy className="w-3.5 h-3.5" />}
                         <span>{copiedDebunk ? (lang === 'ar' ? 'تم النسخ!' : 'Copied!') : (lang === 'ar' ? 'نسخ بطاقة التفنيد' : 'Copy Debunk')}</span>
                       </button>
 
                       <button
                         onClick={() => setShowBadgeModal(true)}
-                        className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/30 hover:bg-emerald-900 text-emerald-300 text-xs transition"
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${currentTheme.accentBadge}`}
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>{lang === 'ar' ? 'تضمين الشارة' : 'Embed Badge'}</span>
@@ -538,16 +583,17 @@ export default function App() {
                 </div>
 
                 {/* Grid: Sensationalism Meter & Confidence Matrix */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+                  
                   {/* Sensationalism Meter */}
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4">
+                  <div className={`rounded-2xl border p-5 sm:p-6 space-y-4 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                        <Flame className={`w-4 h-4 ${currentResult.sensationalism.score > 40 ? 'text-rose-400' : 'text-emerald-400'}`} />
-                        <span>{lang === 'ar' ? 'مؤشر الإثارة والاصطياد العاطفي' : 'Sensationalism & Clickbait Index'}</span>
+                      <h3 className={`text-sm font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+                        <Flame className={`w-4 h-4 ${currentResult.sensationalism.score > 40 ? 'text-rose-400' : currentTheme.accentText}`} />
+                        <span>{lang === 'ar' ? 'مؤشر الإثارة والاصطياد العاطفي' : 'Sensationalism Index'}</span>
                       </h3>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        currentResult.sensationalism.score > 60
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                        currentResult.sensationalism.score > 55
                           ? 'bg-rose-950 text-rose-300 border border-rose-800'
                           : currentResult.sensationalism.score > 25
                           ? 'bg-amber-950 text-amber-300 border border-amber-800'
@@ -558,13 +604,11 @@ export default function App() {
                     </div>
 
                     <div className="space-y-2">
-                      <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
+                      <div className="w-full bg-black/40 h-3 rounded-full overflow-hidden border border-slate-800 p-0.5">
                         <div
                           className={`h-full rounded-full transition-all duration-1000 ${
-                            currentResult.sensationalism.score > 60
+                            currentResult.sensationalism.score > 55
                               ? 'bg-gradient-to-r from-amber-500 to-rose-500'
-                              : currentResult.sensationalism.score > 25
-                              ? 'bg-gradient-to-r from-teal-500 to-amber-500'
                               : 'bg-gradient-to-r from-emerald-500 to-teal-400'
                           }`}
                           style={{ width: `${Math.max(6, currentResult.sensationalism.score)}%` }}
@@ -572,14 +616,14 @@ export default function App() {
                       </div>
                       <p className="text-xs text-slate-400">
                         {currentResult.sensationalism.score > 50
-                          ? (lang === 'ar' ? '⚠️ يحتوي النص على كلمات تهويل أو استدراج عاطفي واصطياد للنقرات.' : '⚠️ Text exhibits heavy clickbait or emotional trigger patterns.')
-                          : (lang === 'ar' ? '✅ الصياغة هادئة ومحايدة تخلو من مؤشرات الإثارة المصطنعة.' : '✅ Tone is neutral, factual, and free of manufactured hype.')}
+                          ? (lang === 'ar' ? '⚠️ يحتوي النص على كلمات تهويل أو استدراج عاطفي واصطياد للنقرات.' : '⚠️ Text exhibits sensational clickbait patterns.')
+                          : (lang === 'ar' ? '✅ الصياغة هادئة ومحايدة تخلو من التهويل المصطنع.' : '✅ Tone is objective and neutral.')}
                       </p>
                     </div>
 
                     {currentResult.sensationalism.triggers?.length > 0 && (
-                      <div className="pt-2 border-t border-slate-800/80">
-                        <span className="text-[11px] text-slate-500 block mb-1">
+                      <div className={`pt-2 border-t ${currentTheme.cardBorder}`}>
+                        <span className="text-[11px] text-slate-400 block mb-1">
                           {lang === 'ar' ? 'الكلمات المرصودة:' : 'Detected Triggers:'}
                         </span>
                         <div className="flex flex-wrap gap-1.5">
@@ -594,13 +638,13 @@ export default function App() {
                   </div>
 
                   {/* Multi-Factor Confidence Matrix */}
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4">
+                  <div className={`rounded-2xl border p-5 sm:p-6 space-y-4 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4 text-cyan-400" />
+                      <h3 className={`text-sm font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+                        <BarChart3 className={`w-4 h-4 ${currentTheme.accentText}`} />
                         <span>{lang === 'ar' ? 'مصفوفة الثقة متعددة العوامل' : 'Confidence Factor Breakdown'}</span>
                       </h3>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800">
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${currentTheme.accentBadge}`}>
                         {currentResult.matrix.grade} ({currentResult.matrix.overallScore}%)
                       </span>
                     </div>
@@ -609,16 +653,16 @@ export default function App() {
                       {currentResult.matrix.factors.map((factor, idx) => (
                         <div key={idx} className="space-y-1">
                           <div className="flex justify-between text-xs">
-                            <span className="text-slate-300 font-medium">
+                            <span className={`font-medium ${currentTheme.textSecondary}`}>
                               {lang === 'ar' ? factor.nameAr : factor.nameEn}
                             </span>
                             <span className="text-slate-400 font-mono">
                               {factor.score}% ({factor.weight}% {lang === 'ar' ? 'وزن' : 'wt'})
                             </span>
                           </div>
-                          <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800/80">
+                          <div className="w-full bg-black/40 h-2 rounded-full overflow-hidden border border-slate-800/80">
                             <div
-                              className="h-full bg-cyan-500 rounded-full transition-all duration-700"
+                              className={`h-full rounded-full transition-all duration-700 ${currentTheme.matrixBar}`}
                               style={{ width: `${factor.score}%` }}
                             />
                           </div>
@@ -628,15 +672,15 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Evidence Sources Section */}
-                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4">
+                {/* Evidence Sources Section with Today Badges & Channels */}
+                <div className={`rounded-2xl border p-5 sm:p-6 space-y-4 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-emerald-400" />
-                      <span>{lang === 'ar' ? 'المصادر والأدلة الإخبارية المسترجعة للفحص:' : 'Cross-Referenced News & Fact-Check Evidence:'}</span>
+                    <h3 className={`text-sm font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+                      <Radio className={`w-4 h-4 ${currentTheme.accentText}`} />
+                      <span>{lang === 'ar' ? 'المصادر والتغطيات الإخبارية المسترجعة للفحص:' : 'Cross-Referenced Live News & Channels:'}</span>
                     </h3>
                     <span className="text-xs text-slate-400">
-                      {currentResult.sources?.length || 0} {lang === 'ar' ? 'مصادر موثوقة' : 'sources'}
+                      {currentResult.sources?.length || 0} {lang === 'ar' ? 'مصادر موثقة' : 'sources'}
                     </span>
                   </div>
 
@@ -645,23 +689,33 @@ export default function App() {
                       currentResult.sources.map((src, idx) => (
                         <div
                           key={idx}
-                          className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-slate-700 transition space-y-2"
+                          className={`p-4 rounded-xl border transition space-y-2 ${currentTheme.inputBg} ${currentTheme.cardBorder} hover:border-slate-600`}
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-white">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`text-xs font-bold ${currentTheme.textPrimary}`}>
                                 {src.publisher || src.domain}
                               </span>
+
+                              {src.isToday && (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{src.relativeTime || (lang === 'ar' ? 'خبر اليوم' : 'Today')}</span>
+                                </span>
+                              )}
+
                               {src.regionLabelAr && (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-cyan-300 border border-slate-700/80">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-cyan-300 border border-slate-700">
                                   {src.regionLabelAr}
                                 </span>
                               )}
+
                               {src.isFactChecker && (
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-950 text-teal-300 border border-teal-800">
-                                  {lang === 'ar' ? 'هيئة تحقق معتمدة' : 'Verified Fact-Checker'}
+                                  {lang === 'ar' ? 'هيئة تحقق معتمدة' : 'Fact-Checker'}
                                 </span>
                               )}
+
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                 src.stance === 'contradicts'
                                   ? 'bg-rose-950 text-rose-300 border border-rose-800'
@@ -677,19 +731,19 @@ export default function App() {
                               href={src.url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 shrink-0"
+                              className={`text-xs flex items-center gap-1 shrink-0 ${currentTheme.accentText} hover:underline`}
                             >
                               <span>{lang === 'ar' ? 'زيارة المصدر' : 'Open Link'}</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
 
-                          <p className="text-xs text-slate-300 font-medium">
+                          <p className={`text-xs font-medium leading-snug ${currentTheme.textPrimary}`}>
                             {src.title}
                           </p>
 
                           {src.snippet && (
-                            <p className="text-xs text-slate-400 leading-relaxed bg-slate-900/60 p-2.5 rounded-lg border border-slate-800/50">
+                            <p className="text-xs text-slate-400 leading-relaxed bg-black/20 p-2.5 rounded-lg border border-slate-800/40">
                               "{src.snippet}"
                             </p>
                           )}
@@ -709,27 +763,28 @@ export default function App() {
 
         {/* TAB 2: BATCH VERIFICATION */}
         {activeTab === 'batch' && (
-          <div className="space-y-6 animate-fadeIn max-w-4xl mx-auto">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-xl space-y-4">
-              <div className="flex items-center justify-between">
+          <div className="space-y-6 animate-fadeIn">
+            <div className={`rounded-2xl border p-5 sm:p-6 shadow-xl space-y-4 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-white flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-emerald-400" />
+                  <h2 className={`text-base font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+                    <Layers className={`w-4 h-4 ${currentTheme.accentText}`} />
                     <span>{lang === 'ar' ? 'أداة الفحص الإخباري المجمّع' : 'Batch News & Claim Verification'}</span>
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
                     {lang === 'ar'
-                      ? 'أدخل عدة ادعاءات (كل ادعاء في سطر منفصل) للتحقق منها جميعاً بنقرة واحدة.'
-                      : 'Enter multiple claims (one per line) to verify in batch with live sources.'}
+                      ? 'ضع كل ادعاء في سطر منفصل للتحقق منها جميعاً دفعة واحدة عبر القنوات الإخبارية.'
+                      : 'Enter each claim on a new line to verify simultaneously.'}
                   </p>
                 </div>
+
                 <button
                   onClick={() => handleBatchVerify()}
                   disabled={isBatchRunning || !batchInput.trim()}
-                  className={`flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold transition shadow-lg ${
+                  className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition shadow-lg ${
                     isBatchRunning || !batchInput.trim()
                       ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                      : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                      : `${currentTheme.accentBtn} ${currentTheme.accentGlow}`
                   }`}
                 >
                   {isBatchRunning ? (
@@ -747,19 +802,18 @@ export default function App() {
               </div>
 
               <textarea
-                rows={6}
+                rows={5}
                 value={batchInput}
                 onChange={e => setBatchInput(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition leading-relaxed"
-                placeholder={lang === 'ar' ? 'ضع كل ادعاء في سطر منفصل هنا...' : 'Enter each claim on a separate line...'}
+                className={`w-full rounded-xl p-4 text-xs font-mono placeholder:text-slate-500 focus:outline-none transition leading-relaxed border ${currentTheme.inputBg} ${currentTheme.inputBorder} ${currentTheme.textPrimary}`}
               />
             </div>
 
             {/* Batch Results Output */}
             {batchResults.length > 0 && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4 shadow-xl">
+              <div className={`rounded-2xl border p-5 sm:p-6 space-y-4 shadow-xl ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-200">
+                  <h3 className={`text-sm font-bold ${currentTheme.textPrimary}`}>
                     {lang === 'ar' ? `نتائج الفحص المجمّع (${batchResults.length} ادعاء):` : `Batch Results (${batchResults.length} claims):`}
                   </h3>
                   <button
@@ -773,7 +827,7 @@ export default function App() {
                       a.download = `truthguard-batch-${Date.now()}.csv`;
                       a.click();
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition ${currentTheme.cardBorder} hover:bg-black/30 ${currentTheme.textSecondary}`}
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>{lang === 'ar' ? 'تصدير كملف CSV' : 'Export CSV'}</span>
@@ -784,14 +838,14 @@ export default function App() {
                   {batchResults.map((item, idx) => {
                     const badge = getVerdictBadge(item.verdict);
                     return (
-                      <div key={idx} className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
+                      <div key={idx} className={`p-4 rounded-xl border space-y-2 ${currentTheme.inputBg} ${currentTheme.cardBorder}`}>
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-bold text-white">"{item.claim}"</p>
+                          <p className={`text-xs font-bold ${currentTheme.textPrimary}`}>"{item.claim}"</p>
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border shrink-0 ${badge.bg}`}>
                             {lang === 'ar' ? item.verdictLabelAr : item.verdictLabelEn}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-300 leading-relaxed">
+                        <p className={`text-xs leading-relaxed ${currentTheme.textSecondary}`}>
                           {lang === 'ar' ? item.summaryAr : item.summaryEn}
                         </p>
                       </div>
@@ -805,8 +859,8 @@ export default function App() {
 
         {/* TAB 3: AUDIT HISTORY */}
         {activeTab === 'history' && (
-          <div className="space-y-6 animate-fadeIn max-w-4xl mx-auto">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-xl">
+          <div className="space-y-6 animate-fadeIn">
+            <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl border shadow-xl ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
               <div className="relative w-full sm:w-72">
                 <Search className="w-4 h-4 text-slate-400 absolute top-3 right-3" />
                 <input
@@ -814,7 +868,7 @@ export default function App() {
                   value={searchFilter}
                   onChange={e => setSearchFilter(e.target.value)}
                   placeholder={lang === 'ar' ? 'بحث في السجل...' : 'Search history...'}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pr-10 pl-4 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500"
+                  className={`w-full rounded-xl pr-10 pl-4 py-2 text-xs placeholder:text-slate-500 focus:outline-none border ${currentTheme.inputBg} ${currentTheme.inputBorder} ${currentTheme.textPrimary}`}
                 />
               </div>
 
@@ -822,7 +876,7 @@ export default function App() {
                 <select
                   value={verdictFilter}
                   onChange={e => setVerdictFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none"
+                  className={`rounded-xl px-3 py-2 text-xs border focus:outline-none ${currentTheme.inputBg} ${currentTheme.inputBorder} ${currentTheme.textSecondary}`}
                 >
                   <option value="all">{lang === 'ar' ? 'جميع التصنيفات' : 'All Verdicts'}</option>
                   <option value="supported">{lang === 'ar' ? 'صحيح' : 'Supported'}</option>
@@ -839,7 +893,7 @@ export default function App() {
                         localStorage.removeItem('truthguard_saved_history');
                       }
                     }}
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+                    className="p-2 rounded-xl text-rose-400 hover:bg-rose-950/30 transition border border-rose-900/30"
                     title="Clear history"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -851,8 +905,8 @@ export default function App() {
             {/* History Cards */}
             <div className="space-y-3">
               {history.length === 0 ? (
-                <div className="text-center py-16 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-3">
-                  <Bookmark className="w-8 h-8 text-slate-600 mx-auto" />
+                <div className={`text-center py-16 rounded-2xl border space-y-3 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
+                  <Bookmark className="w-8 h-8 text-slate-500 mx-auto" />
                   <p className="text-sm text-slate-400">
                     {lang === 'ar' ? 'لا توجد فحوصات محفوظة حتى الآن.' : 'No audit records in history yet.'}
                   </p>
@@ -869,7 +923,7 @@ export default function App() {
                     return (
                       <div
                         key={idx}
-                        className="p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition shadow-sm space-y-3 cursor-pointer"
+                        className={`p-5 rounded-2xl border hover:border-slate-600 transition shadow-sm space-y-3 cursor-pointer ${currentTheme.cardBg} ${currentTheme.cardBorder}`}
                         onClick={() => {
                           setCurrentResult(item);
                           setInputClaim(item.claim);
@@ -877,19 +931,19 @@ export default function App() {
                         }}
                       >
                         <div className="flex items-start justify-between gap-4">
-                          <h4 className="text-sm font-bold text-white hover:text-emerald-400 transition">
+                          <h4 className={`text-sm font-bold transition hover:${currentTheme.accentText} ${currentTheme.textPrimary}`}>
                             "{item.claim}"
                           </h4>
                           <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border shrink-0 ${badge.bg}`}>
                             {lang === 'ar' ? item.verdictLabelAr : item.verdictLabelEn}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-300 line-clamp-2">
+                        <p className={`text-xs line-clamp-2 ${currentTheme.textSecondary}`}>
                           {lang === 'ar' ? item.summaryAr : item.summaryEn}
                         </p>
-                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-800/80">
+                        <div className={`flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t ${currentTheme.cardBorder}`}>
                           <span>{new Date(item.verifiedAt).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</span>
-                          <span className="text-emerald-400 font-semibold">{lang === 'ar' ? 'إعادة الفحص والعرض ←' : 'Review details →'}</span>
+                          <span className={`font-semibold ${currentTheme.accentText}`}>{lang === 'ar' ? 'عرض التفاصيل ←' : 'Review details →'}</span>
                         </div>
                       </div>
                     );
@@ -900,12 +954,103 @@ export default function App() {
         )}
       </main>
 
+      {/* SETTINGS DRAWER / MODAL */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className={`border rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
+            
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className={`text-base font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+                <Sliders className={`w-4 h-4 ${currentTheme.accentText}`} />
+                <span>{lang === 'ar' ? 'لوحة إعدادات النظام والمظهر' : 'Settings & Themes'}</span>
+              </h3>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Theme Picker Grid */}
+            <div className="space-y-3">
+              <label className={`text-xs font-bold block ${currentTheme.textPrimary}`}>
+                {lang === 'ar' ? '🎨 اختر ثيم المظهر وألوان الموقع:' : '🎨 Select Visual Theme & Palette:'}
+              </label>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {Object.values(THEMES).map(t => {
+                  const isSelected = t.id === themeId;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => handleSelectTheme(t.id)}
+                      className={`p-3 rounded-xl border text-start transition flex flex-col justify-between gap-2 ${
+                        isSelected
+                          ? `border-emerald-500 bg-emerald-500/10 shadow-sm ${t.previewRing}`
+                          : 'border-slate-800 bg-black/20 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className="w-5 h-5 rounded-full border border-white/20 shadow-sm"
+                          style={{ backgroundColor: t.previewColor }}
+                        />
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                      </div>
+                      <div>
+                        <span className={`text-xs font-bold block ${currentTheme.textPrimary}`}>
+                          {lang === 'ar' ? t.nameAr.split(' ')[0] + ' ' + (t.nameAr.split(' ')[1] || '') : t.nameEn.split(' ')[0]}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block line-clamp-1">
+                          {lang === 'ar' ? t.descAr : t.descEn}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live News Preferences */}
+            <div className={`p-4 rounded-xl border space-y-2 ${currentTheme.inputBg} ${currentTheme.cardBorder}`}>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+                <Radio className={`w-3.5 h-3.5 ${currentTheme.accentText}`} />
+                <span>{lang === 'ar' ? 'تغطية القنوات الإخبارية الحية المفعلة:' : 'Active Live Channels Coverage:'}</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                {lang === 'ar'
+                  ? 'يتم فحص أخبار اليوم الحية عبر: قناة الجزيرة، قناة الحدث، قناة العربية، شبكة المسيرة، سكاي نيوز عربية، RT عربي، والصحافة اليمنية (الأيام، عدن الغد، سبأ) والعراقية (واع، السومرية).'
+                  : 'Live channels monitored: Al Jazeera, Al Hadath, Al Arabiya, Al Masirah, Sky News, RT, and local Yemeni & Iraqi presses.'}
+              </p>
+            </div>
+
+            {/* Language & Actions */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${currentTheme.cardBorder} ${currentTheme.textSecondary}`}
+              >
+                {lang === 'ar' ? 'تبديل إلى English' : 'Switch to عربي'}
+              </button>
+
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className={`px-5 py-2 rounded-xl text-xs font-bold shadow ${currentTheme.accentBtn}`}
+              >
+                {lang === 'ar' ? 'حفظ وإغلاق' : 'Save & Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* EMBED BADGE MODAL */}
       {showBadgeModal && currentResult && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Share2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+          <div className={`border rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 ${currentTheme.cardBg} ${currentTheme.cardBorder}`}>
+            <h3 className={`text-base font-bold flex items-center gap-2 ${currentTheme.textPrimary}`}>
+              <Share2 className={`w-4 h-4 ${currentTheme.accentText}`} />
               <span>{lang === 'ar' ? 'شارة التحقق التفاعلية' : 'Interactive Fact-Check Badge'}</span>
             </h3>
             <p className="text-xs text-slate-400">
@@ -914,12 +1059,12 @@ export default function App() {
                 : 'Copy the code below to embed this real-time fact-check verification badge on your site:'}
             </p>
 
-            <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
+            <div className={`p-3 rounded-xl border space-y-2 ${currentTheme.inputBg} ${currentTheme.cardBorder}`}>
               <div className="relative">
                 <input
                   readOnly
                   value={`<a href="https://github.com/yunis-alafeef/TruthGuard-AI"><img src="https://truth-guard-ai-opal.vercel.app/api/badge/${currentResult.verdict}/${currentResult.confidenceScore}" alt="TruthGuard Fact-Check Badge" /></a>`}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-[11px] font-mono text-cyan-300 focus:outline-none"
+                  className={`w-full rounded-lg p-2.5 text-[11px] font-mono focus:outline-none border ${currentTheme.inputBg} ${currentTheme.cardBorder} text-cyan-300`}
                 />
                 <button
                   onClick={() => {
@@ -927,9 +1072,9 @@ export default function App() {
                     setCopiedBadgeCode(true);
                     setTimeout(() => setCopiedBadgeCode(false), 2000);
                   }}
-                  className="absolute top-2 left-2 text-[10px] text-slate-300 hover:text-emerald-400 bg-slate-800 px-2 py-1 rounded border border-slate-700 flex items-center gap-1"
+                  className={`absolute top-2 left-2 text-[10px] px-2.5 py-1 rounded border flex items-center gap-1 ${currentTheme.accentBtn}`}
                 >
-                  {copiedBadgeCode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copiedBadgeCode ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                   <span>{copiedBadgeCode ? (lang === 'ar' ? 'تم النسخ!' : 'Copied!') : (lang === 'ar' ? 'نسخ' : 'Copy')}</span>
                 </button>
               </div>
@@ -938,7 +1083,7 @@ export default function App() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={() => setShowBadgeModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+                className={`px-4 py-2 rounded-xl text-xs font-semibold border ${currentTheme.cardBorder} ${currentTheme.textSecondary}`}
               >
                 {lang === 'ar' ? 'إغلاق' : 'Close'}
               </button>
@@ -947,23 +1092,32 @@ export default function App() {
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-slate-800/80 bg-slate-900/60 py-6 mt-12 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>
-            © {new Date().getFullYear()} TruthGuard AI | {lang === 'ar' ? 'إعداد وهندسة: المهندس يونس العفيف' : 'Engineered by Eng. Yunis Al-Afeef'}
-          </p>
-          <div className="flex items-center gap-4">
+      {/* MINIMALIST & INFORMATIVE FOOTER (Houses all meta, repo, and developer credits) */}
+      <footer className={`border-t py-8 mt-12 text-xs transition-colors duration-300 ${currentTheme.headerBg}`}>
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-center sm:text-start space-y-1">
+            <p className={`font-semibold ${currentTheme.textPrimary}`}>
+              TruthGuard AI | {lang === 'ar' ? 'إعداد وهندسة: المهندس يونس العفيف' : 'Engineered by Eng. Yunis Al-Afeef'}
+            </p>
+            <p className="text-[11px] text-slate-500">
+              {lang === 'ar'
+                ? 'فحص الأخبار ومطابقة التغطيات اليومية (الجزيرة، المسيرة، الحدث، سكاي نيوز) + التدقيق الإقليمي (اليمن، الخليج، العراق)'
+                : 'Real-time multi-wire fact-checking across Al Jazeera, Al Masirah, Al Hadath, Sky News & Regional Press'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4 text-slate-400">
             <a
               href="https://github.com/yunis-alafeef/TruthGuard-AI"
               target="_blank"
               rel="noreferrer"
-              className="text-slate-400 hover:text-emerald-400 transition"
+              className={`flex items-center gap-1 transition hover:${currentTheme.accentText}`}
             >
-              GitHub Repository
+              <span>GitHub Repository</span>
+              <ExternalLink className="w-3 h-3" />
             </a>
             <span>•</span>
-            <span className="text-slate-500">Live Multi-Source Search + Gemini AI Reasoning</span>
+            <span className="text-slate-500">LIAR Benchmark + Live Temporal Grounding</span>
           </div>
         </div>
       </footer>
